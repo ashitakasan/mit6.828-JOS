@@ -1,0 +1,25 @@
+[f000:e05b]    0xfe05b: cmpl   $0x0,%cs:0x6ac8
+[f000:e062]    0xfe062: jne    0xfd2e1
+[f000:e066]    0xfe066: xor    %dx,%dx
+[f000:e068]    0xfe068: mov    %dx,%ss
+[f000:e06a]    0xfe06a: mov    $0x7000,%esp
+[f000:e070]    0xfe070: mov    $0xf34c2,%edx
+[f000:e076]    0xfe076: jmp    0xfd15c
+[f000:d15c]    0xfd15c: mov    %eax,%ecx
+[f000:d15f]    0xfd15f: cli
+[f000:d160]    0xfd160: cld
+[f000:d161]    0xfd161: mov    $0x8f,%eax
+[f000:d167]    0xfd167: out    %al,$0x70
+[f000:d169]    0xfd169: in     $0x71,%al
+[f000:d16b]    0xfd16b: in     $0x92,%al
+[f000:d16d]    0xfd16d: or     $0x2,%al
+[f000:d16f]    0xfd16f: out    %al,$0x92
+[f000:d171]    0xfd171: lidtw  %cs:0x6ab8
+[f000:d177]    0xfd177: lgdtw  %cs:0x6a74
+[f000:d17d]    0xfd17d: mov    %cr0,%eax
+[f000:d180]    0xfd180: or     $0x1,%eax
+[f000:d184]    0xfd184: mov    %eax,%cr0
+[f000:d187]    0xfd187: ljmpl  $0x8,$0xfd18f
+=> The target architecture is assumed to be i386
+=> 0xfd18f:     mov    $0x10,%eax
+=> 0xfd194:     mov    %eax,%ds
