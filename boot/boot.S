@@ -47,7 +47,7 @@ seta20.2:
 	lgdt	gdtdesc
 	# cr0中第0位为1表示处于保护模式，为0表示处于实模式
 	movl	%cr0, %eax				# 把控制寄存器cr0加载到eax中
-	orl		$CR0_PE_ON, %eax			# 将eax中的第0位置 1
+	orl		$CR0_PE_ON, %eax			# 将eax中的第0位 置1
 	movl	%eax, %cr0 				# 将eax中的值装入cr0中
 
 	# 跳转到32位模式中的下一条指令，将处理请切换为32位工作模式
