@@ -21,7 +21,7 @@ call   *(%di)		# call *0x10018
 
 #call *0x10018
 #x/10i *0x10018
-movw   $0x1234,0x472
+0x10000c:	movw   $0x1234,0x472
 
 
 ### 4. How does the boot loader decide how many sectors it must read in order to fetch the entire kernel from disk? Where does it find this information?
@@ -35,3 +35,22 @@ ELF格式内核镜像的前4096个字节，记录了内核的格式信息、大�
 修改boot/Makefrag文件中的 -Ttext 0x7C00 为 0x7A00；
 编译后的代码基本不变，boot.S 的起始地址依然在 0x7C00 地址处，但是由于编译器设置代码段链接地址为 0x7A00，程序从这里开始执行，于是就出现了程序执行错误，系统启动引导失败
 Triple fault.  Halting for inspection via QEMU monitor.
+
+
+## Exercise 7.
+
+```
+(gdb) x/10i 0x10000c
+=> 0x10000c:    movw   $0x1234,0x472		# kernel start
+   0x100015:    mov    $0x110000,%eax
+   0x10001a:    mov    %eax,%cr3
+   0x10001d:    mov    %cr0,%eax
+   0x100020:    or     $0x80010001,%eax
+   0x100025:    mov    %eax,%cr0 			# turn on paging
+   0x100028:    mov    $0xf010002f,%eax 	# 内存地址在这里会转换
+   0x10002d:    jmp    *%eax
+   0x10002f:    mov    $0x0,%ebp
+   0x100034:    mov    $0xf0110000,%esp
+```
+在执行 mov %eax,%cr0 之前，0x00100000 与 0xF0100000 值不同，
+执行后，0x00100000 映射到 0xF0100000 上，二者值相同
