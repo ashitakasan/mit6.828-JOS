@@ -17,12 +17,12 @@ struct Command {
 	const char *desc;
 	// 返回-1强制监视器退出
 	int (*func)(int argc, char **argv, struct Trapframe *tf);
-}
+};
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-}
+};
 
 /*****  基本内核监控命令的实现  *****/
 
@@ -71,7 +71,7 @@ int mon_backtrace(int argc, char **argv, struct Trapframe *tf){
 
 		debuginfo_eip(eip, &info);
 		cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line, info.eip_fn_namelen,
-			info.eip_fn_name, ebp - info.eip_fn_addr);
+			info.eip_fn_name, eip - info.eip_fn_addr);
 		ebp = *(uint32_t *)(ebp);
 	}
 	return 0;

@@ -8,7 +8,7 @@
 // 测试栈回溯功能
 void test_backtrace(int x){
 	cprintf("entering test_backtrace %d\n", x);
-	if(x >= 0)
+	if(x > 0)
 		test_backtrace(x-1);
 	else
 		mon_backtrace(0, 0, 0);
@@ -29,10 +29,10 @@ void i386_init(void){
 	// 初始化终端，在此之前不能调用 cprintf
 	cons_init();
 
-	cprintf("8.828 decimal is %o octal!\n", 6828);
+	cprintf("6.828 decimal is %o octal!\n", 6828);
 
 	// 测试栈回溯功能
-	test_backtrace(6);
+	test_backtrace(5);
 
 	// 陷入内核监控
 	while(1)

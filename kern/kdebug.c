@@ -74,11 +74,12 @@ static void stab_binsearch(const struct Stab *stabs, int *region_left,
 	}
 
 	if(!any_matches)
-		*region_left = *region_left - 1;
+		*region_right = *region_left - 1;
 	else{
 		// 发现包含'addr'最右边的区域
 		for(l = *region_right; l > *region_left && stabs[l].n_type != type; l--)
-			*region_left = l;
+			;
+		*region_left = l;
 	}
 }
 
@@ -135,7 +136,7 @@ int debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info){
 	if(lfun <= rfun){
 		// stabs[lfun] 指向字符串表内的函数名
 		if(stabs[lfun].n_strx < stabstr_end - stabstr)
-			info->eip_fn_name = stabstr + strbs[lfun].n_str;
+			info->eip_fn_name = stabstr + stabs[lfun].n_strx;
 		info->eip_fn_addr = stabs[lfun].n_value;
 		addr -= info->eip_fn_addr;
 
@@ -150,7 +151,7 @@ int debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info){
 		rline = rfile;
 	}
 	// 忽略冒号后的东西
-	info->eip_fn_namelen = strfind(info->eip_fn_name, ':');
+	info->eip_fn_namelen = strfind(info->eip_fn_name, ':') - info->eip_fn_name;
 
 	// 在 [lline, rline]中查找文件行stab，
 	// 如果找到了，就设置 info->eip_line 为文件行，否则返回 -1
@@ -164,8 +165,8 @@ int debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info){
 
 	// 从相关文件名的文件行stab向后搜索。
 	// 我们不能仅使用 lfile stab，因为内联函数从不同文件插入代码。
-	// 这些包含的源文件使用 N_SQL stab类型
-	while(lline >= lfile && stabs[lline].n_type != N_SQL
+	// 这些包含的源文件使用 N_SOL stab类型
+	while(lline >= lfile && stabs[lline].n_type != N_SOL
 		&& (stabs[lline].n_type != N_SO || !stabs[lline].n_value))
 		lline--;
 	if(lline >= lfile && stabs[lline].n_strx < stabstr_end - stabstr)

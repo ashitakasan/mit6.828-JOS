@@ -2,133 +2,126 @@
 #define JOS_INC_MMU_H
 
 /*
- * This file contains definitions for the x86 memory management unit (MMU),
- * including paging- and segmentation-related data structures and constants,
- * the %cr0, %cr4, and %eflags registers, and traps.
+ 该文件定义了x86内存管理，包括分页、分段相关的数据结构和常量，
+ %cr0, %cr4, %eflags 寄存器和陷阱
  */
 
 /*
- *
- *	Part 1.  Paging data structures and constants.
- *
+	第一部分，分页数据结构和常量
  */
 
-// A linear address 'la' has a three-part structure as follows:
-//
-// +--------10------+-------10-------+---------12----------+
-// | Page Directory |   Page Table   | Offset within Page  |
-// |      Index     |      Index     |                     |
-// +----------------+----------------+---------------------+
-//  \--- PDX(la) --/ \--- PTX(la) --/ \---- PGOFF(la) ----/
-//  \---------- PGNUM(la) ----------/
-//
-// The PDX, PTX, PGOFF, and PGNUM macros decompose linear addresses as shown.
-// To construct a linear address la from PDX(la), PTX(la), and PGOFF(la),
-// use PGADDR(PDX(la), PTX(la), PGOFF(la)).
+/*
+ 线性地址 'la' 由三部分组成
+	+--------10------+-------10-------+---------12----------+
+	| Page Directory |   Page Table   | Offset within Page  |
+	|      Index     |      Index     |                     |
+	+----------------+----------------+---------------------+
+	 \--- PDX(la) --/ \--- PTX(la) --/ \---- PGOFF(la) ----/
+	 \---------- PGNUM(la) ----------/
+ 上图解析了 PDX, PTX, PGOFF, and PGNUM 几个宏定义；
+ 构造一个线性地址的方法是：PGADDR(PDX(la), PTX(la), PGOFF(la)).
+*/
 
-// page number field of address
-#define PGNUM(la)	(((uintptr_t) (la)) >> PTXSHIFT)
+// 地址的页编号字段
+#define	PGNUM(la)	(((uintptr_t)(la)) >> PTXSHIFT)
 
-// page directory index
-#define PDX(la)		((((uintptr_t) (la)) >> PDXSHIFT) & 0x3FF)
+// 页目录索引
+#define	PDX(la)		((((uintptr_t)(la)) >> PDXSHIFT) & 0x3FF)
 
-// page table index
-#define PTX(la)		((((uintptr_t) (la)) >> PTXSHIFT) & 0x3FF)
+// 页表的索引
+#define	PTX(la)		((((uintptr_t)(la)) >> PTXSHIFT) & 0x3FF)
 
-// offset in page
-#define PGOFF(la)	(((uintptr_t) (la)) & 0xFFF)
+// 页偏移
+#define	PGOFF(la)	(((uintptr_t)(la)) & 0xFFF)
 
-// construct linear address from indexes and offset
-#define PGADDR(d, t, o)	((void*) ((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
+// 从索引和偏移量构建线性地址
+#define	PGADDR(d, t, o)	((void *)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
-// Page directory and page table constants.
-#define NPDENTRIES	1024		// page directory entries per page directory
-#define NPTENTRIES	1024		// page table entries per page table
+// 页目录和页表常量
+#define NPDENTRIES	1024		// 每页目录页目录项
+#define NPTENTRIES	1024		// 每个页表页表项
 
-#define PGSIZE		4096		// bytes mapped by a page
+#define PGSIZE		4096		// 每个分页映射字节数
 #define PGSHIFT		12		// log2(PGSIZE)
 
-#define PTSIZE		(PGSIZE*NPTENTRIES) // bytes mapped by a page directory entry
+#define PTSIZE		(PGSIZE*NPTENTRIES) // 整个页表映射的字节数
 #define PTSHIFT		22		// log2(PTSIZE)
 
-#define PTXSHIFT	12		// offset of PTX in a linear address
-#define PDXSHIFT	22		// offset of PDX in a linear address
+#define PTXSHIFT	12		// 线性地址 PTX 偏移量
+#define PDXSHIFT	22		// 线性地址 PDX 偏移量
 
-// Page table/directory entry flags.
-#define PTE_P		0x001	// Present
-#define PTE_W		0x002	// Writeable
-#define PTE_U		0x004	// User
-#define PTE_PWT		0x008	// Write-Through
-#define PTE_PCD		0x010	// Cache-Disable
-#define PTE_A		0x020	// Accessed
-#define PTE_D		0x040	// Dirty
-#define PTE_PS		0x080	// Page Size
-#define PTE_G		0x100	// Global
+// 页表/目录项标志
+#define PTE_P		0x001	// 当前
+#define PTE_W		0x002	// 可写
+#define PTE_U		0x004	// 用户
+#define PTE_PWT		0x008	// 直写式
+#define PTE_PCD		0x010	// 缓存禁用
+#define PTE_A		0x020	// 访问过
+#define PTE_D		0x040	// 脏页
+#define PTE_PS		0x080	// 页大小
+#define PTE_G		0x100	// 全局页
 
-// The PTE_AVAIL bits aren't used by the kernel or interpreted by the
-// hardware, so user processes are allowed to set them arbitrarily.
-#define PTE_AVAIL	0xE00	// Available for software use
+// PTE_AVAIL位不用于内核或硬件中断，因此，用户进程允许任意设置它们
+#define	PTE_AVAIL	0xE00	// 可用于软件的使用
 
-// Flags in PTE_SYSCALL may be used in system calls.  (Others may not.)
-#define PTE_SYSCALL	(PTE_AVAIL | PTE_P | PTE_W | PTE_U)
+// 标志 PTE_SYSCALL 可用于系统调用
+#define	PTE_SYSCALL	(PTE_AVAIL | PTE_P | PTE_W | PTE_U)
 
-// Address in page table or page directory entry
-#define PTE_ADDR(pte)	((physaddr_t) (pte) & ~0xFFF)
+// 在页表或页目录的入口地址
+#define	PTE_ADDR(pte)	((physaddr_t) (pte) & ~0xFFF)
 
-// Control Register flags
-#define CR0_PE		0x00000001	// Protection Enable
-#define CR0_MP		0x00000002	// Monitor coProcessor
-#define CR0_EM		0x00000004	// Emulation
-#define CR0_TS		0x00000008	// Task Switched
-#define CR0_ET		0x00000010	// Extension Type
-#define CR0_NE		0x00000020	// Numeric Errror
-#define CR0_WP		0x00010000	// Write Protect
-#define CR0_AM		0x00040000	// Alignment Mask
-#define CR0_NW		0x20000000	// Not Writethrough
-#define CR0_CD		0x40000000	// Cache Disable
-#define CR0_PG		0x80000000	// Paging
+// 控制寄存器标志
+#define CR0_PE		0x00000001	// 保护启用
+#define CR0_MP		0x00000002	// 监视器协处理器
+#define CR0_EM		0x00000004	// 仿真
+#define CR0_TS		0x00000008	// 任务切换
+#define CR0_ET		0x00000010	// 扩展类型
+#define CR0_NE		0x00000020	// 数字错误
+#define CR0_WP		0x00010000	// 写保护
+#define CR0_AM		0x00040000	// 对齐掩码
+#define CR0_NW		0x20000000	// 非直写式
+#define CR0_CD		0x40000000	// 缓存禁用
+#define CR0_PG		0x80000000	// 分页
 
-#define CR4_PCE		0x00000100	// Performance counter enable
-#define CR4_MCE		0x00000040	// Machine Check Enable
-#define CR4_PSE		0x00000010	// Page Size Extensions
-#define CR4_DE		0x00000008	// Debugging Extensions
-#define CR4_TSD		0x00000004	// Time Stamp Disable
-#define CR4_PVI		0x00000002	// Protected-Mode Virtual Interrupts
-#define CR4_VME		0x00000001	// V86 Mode Extensions
+#define CR4_PCE		0x00000100	// 性能计数器启用
+#define CR4_MCE		0x00000040	// 机器检查启用
+#define CR4_PSE		0x00000010	// 页面大小扩展
+#define CR4_DE		0x00000008	// 调试扩展
+#define CR4_TSD		0x00000004	// 禁用时间戳
+#define CR4_PVI		0x00000002	// 保护模式虚拟中断
+#define CR4_VME		0x00000001	// V86模式扩展
 
-// Eflags register
-#define FL_CF		0x00000001	// Carry Flag
-#define FL_PF		0x00000004	// Parity Flag
-#define FL_AF		0x00000010	// Auxiliary carry Flag
-#define FL_ZF		0x00000040	// Zero Flag
-#define FL_SF		0x00000080	// Sign Flag
-#define FL_TF		0x00000100	// Trap Flag
-#define FL_IF		0x00000200	// Interrupt Flag
-#define FL_DF		0x00000400	// Direction Flag
-#define FL_OF		0x00000800	// Overflow Flag
-#define FL_IOPL_MASK	0x00003000	// I/O Privilege Level bitmask
+// Eflags 寄存器
+#define FL_CF		0x00000001	// 进位标志
+#define FL_PF		0x00000004	// 奇偶标志
+#define FL_AF		0x00000010	// 辅助进位标志
+#define FL_ZF		0x00000040	// 零标志
+#define FL_SF		0x00000080	// 符号标志
+#define FL_TF		0x00000100	// 陷阱标志
+#define FL_IF		0x00000200	// 中断标志
+#define FL_DF		0x00000400	// 方向标志
+#define FL_OF		0x00000800	// 溢出标志
+#define FL_IOPL_MASK	0x00003000	// I/O 权限级别位掩码
 #define FL_IOPL_0	0x00000000	//   IOPL == 0
 #define FL_IOPL_1	0x00001000	//   IOPL == 1
 #define FL_IOPL_2	0x00002000	//   IOPL == 2
 #define FL_IOPL_3	0x00003000	//   IOPL == 3
-#define FL_NT		0x00004000	// Nested Task
-#define FL_RF		0x00010000	// Resume Flag
-#define FL_VM		0x00020000	// Virtual 8086 mode
-#define FL_AC		0x00040000	// Alignment Check
-#define FL_VIF		0x00080000	// Virtual Interrupt Flag
-#define FL_VIP		0x00100000	// Virtual Interrupt Pending
-#define FL_ID		0x00200000	// ID flag
+#define FL_NT		0x00004000	// 嵌套任务
+#define FL_RF		0x00010000	// 恢复标志
+#define FL_VM		0x00020000	// 虚拟8086模式
+#define FL_AC		0x00040000	// 对齐检查
+#define FL_VIF		0x00080000	// 虚拟中断标志
+#define FL_VIP		0x00100000	// 虚拟中断挂起
+#define FL_ID		0x00200000	// ID 标志
 
-// Page fault error codes
-#define FEC_PR		0x1	// Page fault caused by protection violation
-#define FEC_WR		0x2	// Page fault caused by a write
-#define FEC_U		0x4	// Page fault occured while in user mode
+// 页错误代码
+#define FEC_PR		0x1	// 保护冲突引起的页面错误
+#define FEC_WR		0x2	// 写入引起的页面错误
+#define FEC_U		0x4	// 用户模式发生的页面错误
 
 
 /*
- *
- *	Part 2.  Segmentation data structures and constants.
- *
+	第二部分：分段数据结构和常量
  */
 
 #ifdef __ASSEMBLER__
@@ -148,27 +141,27 @@
 
 #include <inc/types.h>
 
-// Segment Descriptors
+// 段描述符
 struct Segdesc {
-	unsigned sd_lim_15_0 : 16;  // Low bits of segment limit
-	unsigned sd_base_15_0 : 16; // Low bits of segment base address
-	unsigned sd_base_23_16 : 8; // Middle bits of segment base address
-	unsigned sd_type : 4;       // Segment type (see STS_ constants)
-	unsigned sd_s : 1;          // 0 = system, 1 = application
-	unsigned sd_dpl : 2;        // Descriptor Privilege Level
+	unsigned sd_lim_15_0 : 16;  // 段限制低位
+	unsigned sd_base_15_0 : 16; // 段基址的低位
+	unsigned sd_base_23_16 : 8; // 段基址的中间位
+	unsigned sd_type : 4;       // 段类型 (see STS_ constants)
+	unsigned sd_s : 1;          // 0 = 系统, 1 = 应用
+	unsigned sd_dpl : 2;        // 描述符特权级别
 	unsigned sd_p : 1;          // Present
-	unsigned sd_lim_19_16 : 4;  // High bits of segment limit
-	unsigned sd_avl : 1;        // Unused (available for software use)
-	unsigned sd_rsv1 : 1;       // Reserved
+	unsigned sd_lim_19_16 : 4;  // 段限制高位
+	unsigned sd_avl : 1;        // 未使用（可用于软件使用）
+	unsigned sd_rsv1 : 1;       // 保留的
 	unsigned sd_db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
 	unsigned sd_g : 1;          // Granularity: limit scaled by 4K when set
-	unsigned sd_base_31_24 : 8; // High bits of segment base address
+	unsigned sd_base_31_24 : 8; // 段基址的高位
 };
-// Null segment
+// 空段
 #define SEG_NULL	(struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-// Segment that is loadable but faults when used
+// 段是可读的，但使用时出现故障
 #define SEG_FAULT	(struct Segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
-// Normal segment
+// 普通段
 #define SEG(type, base, lim, dpl) (struct Segdesc)			\
 { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,	\
     type, 1, dpl, 1, (unsigned) (lim) >> 28, 0, 0, 1, 1,		\
@@ -180,42 +173,40 @@ struct Segdesc {
 
 #endif /* !__ASSEMBLER__ */
 
-// Application segment type bits
-#define STA_X		0x8	    // Executable segment
-#define STA_E		0x4	    // Expand down (non-executable segments)
-#define STA_C		0x4	    // Conforming code segment (executable only)
-#define STA_W		0x2	    // Writeable (non-executable segments)
-#define STA_R		0x2	    // Readable (executable segments)
-#define STA_A		0x1	    // Accessed
+// 应用程序段类型位
+#define STA_X		0x8	    // 可执行段
+#define STA_E		0x4	    // 展开向下（非可执行段）
+#define STA_C		0x4	    // 相容代码段（仅可执行文件）
+#define STA_W		0x2	    // 可写（非可执行的段）
+#define STA_R		0x2	    // 可读（可执行段）
+#define STA_A		0x1	    // 已访问
 
-// System segment type bits
-#define STS_T16A	0x1	    // Available 16-bit TSS
-#define STS_LDT		0x2	    // Local Descriptor Table
-#define STS_T16B	0x3	    // Busy 16-bit TSS
-#define STS_CG16	0x4	    // 16-bit Call Gate
-#define STS_TG		0x5	    // Task Gate / Coum Transmitions
-#define STS_IG16	0x6	    // 16-bit Interrupt Gate
-#define STS_TG16	0x7	    // 16-bit Trap Gate
-#define STS_T32A	0x9	    // Available 32-bit TSS
-#define STS_T32B	0xB	    // Busy 32-bit TSS
-#define STS_CG32	0xC	    // 32-bit Call Gate
-#define STS_IG32	0xE	    // 32-bit Interrupt Gate
-#define STS_TG32	0xF	    // 32-bit Trap Gate
+// 系统段类型位
+#define STS_T16A		0x1	    // 可用的16位TSS
+#define STS_LDT		0x2	    // 局部描述符表
+#define STS_T16B		0x3	    // 忙的16位TSS
+#define STS_CG16		0x4	    // 16位调用门
+#define STS_TG		0x5	    // 任务门/ Coum变速器
+#define STS_IG16		0x6	    // 16位中断门
+#define STS_TG16		0x7	    // 16位陷阱门
+#define STS_T32A		0x9	    // 可用的32位TSS
+#define STS_T32B		0xB	    // 忙的32位TSS
+#define STS_CG32		0xC	    // 32位调用门
+#define STS_IG32		0xE	    // 32位中断门
+#define STS_TG32		0xF	    // 32位陷阱门
 
 
 /*
- *
- *	Part 3.  Traps.
- *
+ *	Part 3.  陷阱.
  */
 
 #ifndef __ASSEMBLER__
 
-// Task state segment format (as described by the Pentium architecture book)
+// 任务状态段的格式（如奔腾架构书中描述）
 struct Taskstate {
 	uint32_t ts_link;	// Old ts selector
 	uintptr_t ts_esp0;	// Stack pointers and segment selectors
-	uint16_t ts_ss0;	//   after an increase in privilege level
+	uint16_t ts_ss0;		//   after an increase in privilege level
 	uint16_t ts_padding1;
 	uintptr_t ts_esp1;
 	uint16_t ts_ss1;
@@ -226,7 +217,7 @@ struct Taskstate {
 	physaddr_t ts_cr3;	// Page directory base
 	uintptr_t ts_eip;	// Saved state from last task switch
 	uint32_t ts_eflags;
-	uint32_t ts_eax;	// More saved state (registers)
+	uint32_t ts_eax;		// More saved state (registers)
 	uint32_t ts_ecx;
 	uint32_t ts_edx;
 	uint32_t ts_ebx;
@@ -252,7 +243,7 @@ struct Taskstate {
 	uint16_t ts_iomb;	// I/O map base address
 };
 
-// Gate descriptors for interrupts and traps
+// 中断和陷阱步态描述
 struct Gatedesc {
 	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
 	unsigned gd_sel : 16;        // segment selector
@@ -265,7 +256,7 @@ struct Gatedesc {
 	unsigned gd_off_31_16 : 16;  // high bits of offset in segment
 };
 
-// Set up a normal interrupt/trap gate descriptor.
+// 设置一个正常中断/陷阱门描述符
 // - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
     //   see section 9.6.1.3 of the i386 reference: "The difference between
     //   an interrupt gate and a trap gate is in the effect on IF (the

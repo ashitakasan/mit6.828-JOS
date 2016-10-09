@@ -39,12 +39,12 @@ static void printnum(void (*putch)(int, void*), void *putdat,
 		while(--width > 0)
 			putch(padc, putdat);
 	}
-	putch("0123456789ABCDEF"[num % base], putdat);
+	putch("0123456789abcdef"[num % base], putdat);
 }
 
 
 // 返回可变参数列表的各种可能的大小，取决于lflag标志参数
-static unsigned long long getunit(va_list *ap, int lflag){
+static unsigned long long getuint(va_list *ap, int lflag){
 	if(lflag >= 2)
 		return va_arg(*ap, unsigned long long);
 	else if(lflag)

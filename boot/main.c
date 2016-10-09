@@ -22,9 +22,9 @@
 #define ELFHDR		((struct Elf *) 0x10000)		// 暂存空间
 
 // 读取硬盘扇区的内容
-void readsect(void*, uint32_t)
+void readsect(void*, uint32_t);
 // 读取内核镜像的程序段到内存中
-void readseg(uint32_t, uint32_t, uint32_t)
+void readseg(uint32_t, uint32_t, uint32_t);
 
 // bootmain C 引导程序
 void bootmain(void){

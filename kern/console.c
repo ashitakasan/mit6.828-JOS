@@ -398,7 +398,7 @@ static void cons_intr(int (*proc)(void)){
 		if(c == 0)
 			continue;
 		cons.buf[cons.wpos++] = c;
-		if(cons.wpos = CONSBUFSIZE)
+		if(cons.wpos == CONSBUFSIZE)
 			cons.wpos = 0;
 	}
 }

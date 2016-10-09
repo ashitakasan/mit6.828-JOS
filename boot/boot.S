@@ -38,7 +38,7 @@ seta20.2:
 	jnz		seta20.2					# 如果al的第2位为0，就不执行该指令，否则就循环检查
 
 	movb	$0xdf, %al				# 将0xdf写入到al中
-	outb	%al, %0x60				# 将al的数据写入到端口 0x60 中
+	outb	%al, $0x60				# 将al的数据写入到端口 0x60 中
 
 	# 将实模式转换为保护模式，使用GDT引导和段翻译，使得虚拟地址对应的物理地址保持不变
 	# 有效储存器映射在切换时保持不变
@@ -76,7 +76,7 @@ spin:
 	jmp spin
 
 # 引导GDT
-.p2align2							# 强制4字节对齐
+.p2align		2						# 强制4字节对齐
 gdt:
 	SEG_NULL
 	SEG(STA_X|STA_R, 0x0, 0xffffffff)	# 代码段描述符

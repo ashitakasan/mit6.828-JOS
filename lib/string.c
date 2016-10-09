@@ -91,7 +91,7 @@ int strcmp(const char *p, const char *q){
 /*
  字符串比较，最多比较 n个字节
  */
-int strncpy(const char *p, const char *q, size_t n){
+int strncmp(const char *p, const char *q, size_t n){
 	while(n > 0 && *p && *p == *q)
 		n--, p++, q++;
 	if(n == 0)
