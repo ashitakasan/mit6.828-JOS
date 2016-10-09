@@ -37,8 +37,8 @@ kernel执行的第一步，就是将物理地址页表（entrypgdir.c）加载�
 然后从低地址空间跳到高地址空间，清除帧指针寄存器（EBP），设置设置栈指针，开始执行C代码。
 ```ASM
 movl    $0x0,%ebp					# nuke frame pointer
-movl    $(bootstacktop), %esp		# Set the stack pointer
-call    i386_init				# now to C code
+movl    $(bootstacktop), %esp	# Set the stack pointer
+call    i386_init				   # now to C code
 ```
 
 

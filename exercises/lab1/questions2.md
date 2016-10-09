@@ -10,7 +10,7 @@ ljmp	$PORT_MODE_CSEG, $protcseg
 
 
 ### 2. What is the last instruction of the boot loader executed, and what is the first instruction of the kernel it just loaded?
-```
+```C
 for (; ph < eph; ph++)
 
 //((void (*)(void)) (ELFHDR->e_entry))();
@@ -18,7 +18,7 @@ call   *(%di)		# call *0x10018
 ```
 
 ### 3. Where is the first instruction of the kernel?
-```
+```ASM
 //call *0x10018
 //x/10i *0x10018
 0x10000c:	movw   $0x1234,0x472
