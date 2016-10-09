@@ -47,8 +47,8 @@
 #define PTSIZE		(PGSIZE*NPTENTRIES) // 整个页表映射的字节数
 #define PTSHIFT		22		// log2(PTSIZE)
 
-#define PTXSHIFT	12		// 线性地址 PTX 偏移量
-#define PDXSHIFT	22		// 线性地址 PDX 偏移量
+#define PTXSHIFT		12		// 线性地址 PTX 偏移量
+#define PDXSHIFT		22		// 线性地址 PDX 偏移量
 
 // 页表/目录项标志
 #define PTE_P		0x001	// 当前
@@ -148,7 +148,7 @@ struct Segdesc {
 	unsigned sd_base_23_16 : 8; // 段基址的中间位
 	unsigned sd_type : 4;       // 段类型 (see STS_ constants)
 	unsigned sd_s : 1;          // 0 = 系统, 1 = 应用
-	unsigned sd_dpl : 2;        // 描述符特权级别
+	unsigned sd_dpl : 2;        // 描述符权限级别
 	unsigned sd_p : 1;          // Present
 	unsigned sd_lim_19_16 : 4;  // 段限制高位
 	unsigned sd_avl : 1;        // 未使用（可用于软件使用）
@@ -157,19 +157,20 @@ struct Segdesc {
 	unsigned sd_g : 1;          // Granularity: limit scaled by 4K when set
 	unsigned sd_base_31_24 : 8; // 段基址的高位
 };
+
 // 空段
-#define SEG_NULL	(struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define SEG_NULL		(struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 // 段是可读的，但使用时出现故障
 #define SEG_FAULT	(struct Segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
 // 普通段
-#define SEG(type, base, lim, dpl) (struct Segdesc)			\
-{ ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,	\
-    type, 1, dpl, 1, (unsigned) (lim) >> 28, 0, 0, 1, 1,		\
-    (unsigned) (base) >> 24 }
-#define SEG16(type, base, lim, dpl) (struct Segdesc)			\
-{ (lim) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,		\
-    type, 1, dpl, 1, (unsigned) (lim) >> 16, 0, 0, 1, 0,		\
-    (unsigned) (base) >> 24 }
+#define SEG(type, base, lim, dpl) (struct Segdesc)				\
+	{ ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,	\
+		type, 1, dpl, 1, (unsigned) (lim) >> 28, 0, 0, 1, 1,			\
+		(unsigned) (base) >> 24 }
+#define SEG16(type, base, lim, dpl) (struct Segdesc)				\
+	{ (lim) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,		\
+		type, 1, dpl, 1, (unsigned) (lim) >> 16, 0, 0, 1, 0,			\
+		(unsigned) (base) >> 24 }
 
 #endif /* !__ASSEMBLER__ */
 
@@ -204,9 +205,9 @@ struct Segdesc {
 
 // 任务状态段的格式（如奔腾架构书中描述）
 struct Taskstate {
-	uint32_t ts_link;	// Old ts selector
-	uintptr_t ts_esp0;	// Stack pointers and segment selectors
-	uint16_t ts_ss0;		//   after an increase in privilege level
+	uint32_t ts_link;	// 旧的 ts 选择器
+	uintptr_t ts_esp0;	// 栈指针和段选择器
+	uint16_t ts_ss0;		// 增加特许级后
 	uint16_t ts_padding1;
 	uintptr_t ts_esp1;
 	uint16_t ts_ss1;
@@ -214,10 +215,10 @@ struct Taskstate {
 	uintptr_t ts_esp2;
 	uint16_t ts_ss2;
 	uint16_t ts_padding3;
-	physaddr_t ts_cr3;	// Page directory base
-	uintptr_t ts_eip;	// Saved state from last task switch
+	physaddr_t ts_cr3;	// 页目录基地址
+	uintptr_t ts_eip;	// 上一任务切换的保存状态
 	uint32_t ts_eflags;
-	uint32_t ts_eax;		// More saved state (registers)
+	uint32_t ts_eax;		// 更多的保存状态 (寄存器)
 	uint32_t ts_ecx;
 	uint32_t ts_edx;
 	uint32_t ts_ebx;
@@ -225,7 +226,7 @@ struct Taskstate {
 	uintptr_t ts_ebp;
 	uint32_t ts_esi;
 	uint32_t ts_edi;
-	uint16_t ts_es;		// Even more saved state (segment selectors)
+	uint16_t ts_es;		// 更多的保存状态 (段选择器)
 	uint16_t ts_padding4;
 	uint16_t ts_cs;
 	uint16_t ts_padding5;
@@ -239,14 +240,14 @@ struct Taskstate {
 	uint16_t ts_padding9;
 	uint16_t ts_ldt;
 	uint16_t ts_padding10;
-	uint16_t ts_t;		// Trap on task switch
-	uint16_t ts_iomb;	// I/O map base address
+	uint16_t ts_t;		// 任务切换的陷阱
+	uint16_t ts_iomb;	// I/O 映射基地址
 };
 
 // 中断和陷阱步态描述
 struct Gatedesc {
 	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
-	unsigned gd_sel : 16;        // segment selector
+	unsigned gd_sel : 16;        // 段选择器
 	unsigned gd_args : 5;        // # args, 0 for interrupt/trap gates
 	unsigned gd_rsv1 : 3;        // reserved(should be zero I guess)
 	unsigned gd_type : 4;        // type(STS_{TG,IG32,TG32})
@@ -257,7 +258,7 @@ struct Gatedesc {
 };
 
 // 设置一个正常中断/陷阱门描述符
-// - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
+// - istrap: 1 表示陷阱 (= 异常) 门, 0 表示中断门
     //   see section 9.6.1.3 of the i386 reference: "The difference between
     //   an interrupt gate and a trap gate is in the effect on IF (the
     //   interrupt-enable flag). An interrupt that vectors through an
@@ -265,41 +266,40 @@ struct Gatedesc {
     //   interfering with the current interrupt handler. A subsequent IRET
     //   instruction restores IF to the value in the EFLAGS image on the
     //   stack. An interrupt through a trap gate does not change IF."
-// - sel: Code segment selector for interrupt/trap handler
-// - off: Offset in code segment for interrupt/trap handler
-// - dpl: Descriptor Privilege Level -
-//	  the privilege level required for software to invoke
-//	  this interrupt/trap gate explicitly using an int instruction.
+// - sel: 代码段选择 中断/陷阱处理程序
+// - off: 代码段偏移量 中断/陷阱处理程序
+// - dpl: 描述符权限级别
+//	   对于软件所需的权限级别来调用此中断/陷阱门使用明确的int指令
 #define SETGATE(gate, istrap, sel, off, dpl)			\
-{								\
+{													\
 	(gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;		\
-	(gate).gd_sel = (sel);					\
-	(gate).gd_args = 0;					\
-	(gate).gd_rsv1 = 0;					\
+	(gate).gd_sel = (sel);							\
+	(gate).gd_args = 0;								\
+	(gate).gd_rsv1 = 0;								\
 	(gate).gd_type = (istrap) ? STS_TG32 : STS_IG32;	\
-	(gate).gd_s = 0;					\
-	(gate).gd_dpl = (dpl);					\
-	(gate).gd_p = 1;					\
+	(gate).gd_s = 0;									\
+	(gate).gd_dpl = (dpl);							\
+	(gate).gd_p = 1;									\
 	(gate).gd_off_31_16 = (uint32_t) (off) >> 16;		\
 }
 
-// Set up a call gate descriptor.
-#define SETCALLGATE(gate, sel, off, dpl)           	        \
-{								\
+// 建立呼叫门描述符
+#define SETCALLGATE(gate, sel, off, dpl)				\
+{													\
 	(gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;		\
-	(gate).gd_sel = (sel);					\
-	(gate).gd_args = 0;					\
-	(gate).gd_rsv1 = 0;					\
-	(gate).gd_type = STS_CG32;				\
-	(gate).gd_s = 0;					\
-	(gate).gd_dpl = (dpl);					\
-	(gate).gd_p = 1;					\
+	(gate).gd_sel = (sel);							\
+	(gate).gd_args = 0;								\
+	(gate).gd_rsv1 = 0;								\
+	(gate).gd_type = STS_CG32;						\
+	(gate).gd_s = 0;									\
+	(gate).gd_dpl = (dpl);							\
+	(gate).gd_p = 1;									\
 	(gate).gd_off_31_16 = (uint32_t) (off) >> 16;		\
 }
 
-// Pseudo-descriptors used for LGDT, LLDT and LIDT instructions.
+// LGDT，LLDT和LIFT指令的伪描述符
 struct Pseudodesc {
-	uint16_t pd_lim;		// Limit
+	uint16_t pd_lim;			// Limit
 	uint32_t pd_base;		// Base address
 } __attribute__ ((packed));
 
