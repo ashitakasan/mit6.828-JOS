@@ -1,0 +1,7 @@
+/obj
+/obj/*
+/jos.in
+/jos.log
+/jos.out
+/jos.out.*
+/jos.cmd
