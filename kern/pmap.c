@@ -62,5 +62,12 @@ static void check_page(void);
 static void check_page_installed_pgdir(void);
 
 
+/*
+ 这个物理内存分配器仅仅在OS设置它的虚拟物理地址时使用，page_alloc()是真正的分配器
+ */
+static void boot_alloc(uint32_t n){
+
+}
+
 
 
