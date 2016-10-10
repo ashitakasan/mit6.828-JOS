@@ -162,7 +162,7 @@ extern volatile pde_t uvpd[];	// 当前页目录
  可以用 page2pa() 来映射一个PageInfo结构体到对应的物理地址。
  */
 struct PageInfo {
-	struct PageInfo *pp_link;	// 链表上下一个页面
+	struct PageInfo *pp_link;	// 链表下一个页面
 
 	// pp_ref 是指向当前页的指针数（通常在页表项中），对于页面使用page_alloc分配；
 	// 启动时的页面分配使用 pmap.c 中的 boot_alloc，它没有有效的引用计数字段。

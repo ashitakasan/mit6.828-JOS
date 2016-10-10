@@ -15,8 +15,8 @@ extern size_t npages;
 extern pde_t *kern_pgdir;
 
 /*
- 这个宏需要一个内核虚拟地址，指向一个高于 KERNBASE的地址，
- KERNBASE映射到机器的物理地址上最大的 256M，返回对应的物理地址。
+ 这个宏接收一个内核虚拟地址，指向高于 KERNBASE的地址，返回对应的物理地址；
+ KERNBASE映射到机器的物理地址上最大的 256M。
  */
 #define	PADDR(kva)	_paddr(__FILE__, __LINE__, kva)
 
