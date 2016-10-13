@@ -251,5 +251,15 @@ void page_decref(struct PageInfo *pp){
 		page_free(pp);
 }
 
+/*
+ 给一个指向页目录的指针 pgdir，pgdir_walk 返回指向线性地址页表项的指针，这需要走两级页表结构；
+ 相关页表页面可能不存在；如果确实不存在，并且 create == false ，则返回 NULL；
+ 否则，pgdir_walk使用 page_alloc 分配一个新的页表，
+ 如果分配失败则返回空，否则，新的页的引用计数加1，该页面被清空，pgdir_walk 返回指向新页面的指针；
+ */
+pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
+	
+	return NULL;
+}
 
 
