@@ -258,8 +258,17 @@ void page_decref(struct PageInfo *pp){
  如果分配失败则返回空，否则，新的页的引用计数加1，该页面被清空，pgdir_walk 返回指向新页面的指针；
  */
 pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
-	
+
 	return NULL;
+}
+
+/*
+ 在 pgdir页表 中，映射虚拟地址空间 [va, va+size) 到物理地址 [pa, pa+size)；
+ 大小的 PGSIZE 的整数倍，虚拟地址va 和物理地址 pa都需要页面对齐；使用权限位 perm|PTE_P；
+ 该函数仅仅为了设置 UTOP 以上的静态映射；因此，它不能改变映射页面的 pp_ref 字段
+ */
+static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm){
+
 }
 
 
