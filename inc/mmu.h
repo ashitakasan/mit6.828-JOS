@@ -44,7 +44,7 @@
 #define PGSIZE		4096		// 每个分页映射字节数
 #define PGSHIFT		12		// log2(PGSIZE)
 
-#define PTSIZE		(PGSIZE*NPTENTRIES) // 整个页表映射的字节数
+#define PTSIZE		(PGSIZE * NPTENTRIES) // 整个页表映射的字节数
 #define PTSHIFT		22		// log2(PTSIZE)
 
 #define PTXSHIFT		12		// 线性地址 PTX 偏移量

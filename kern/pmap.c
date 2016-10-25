@@ -132,9 +132,9 @@ void mem_init(void){
 
 	// 现在开始设置 虚拟内存
 	// 在线性地址 UPAGES 处映射用户只读页面
-	// 权限：UPAGES新镜像：内核可读，用户可读；页面自身：内核读写，用户无权限
-	
+	// 权限：UPAGES 处的映射：内核可读，用户可读；页面自身：内核读写，用户无权限
 
+	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(sizeof(struct PageInfo) * npages, PGSIZE), PADDR(pages), PTE_U);
 
 	// 使用物理内存，'bootstack'指代内核栈；内核堆栈从 虚拟地址KSTACKTOP向下生长，
 	// 我们考虑使用 [KSTACKTOP - PTSIZE, KSTACKTOP] 作为内核栈帧，但是要分成两部分：
@@ -143,14 +143,14 @@ void mem_init(void){
 	// 		因此如果内核溢出它的栈，会出错而不是写入内存；即保护页；
 	// 	权限：内核 RW，用户 无权限
 
-
+	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
 	// 在 KERNBASE 处映射所有的物理内存
 	// 例如，虚拟地址 [KERNBASE, 2^32) 应该映射物理地址 [0, 2^32 - KERNBASE)
 	// 我们可能没有 2^32 - KERNBASE 的物理内存，但是无论如果我们只要设置映射；
 	// 权限：内核 RW，用户 无权限
 	
-
+	boot_map_region(kern_pgdir, KERNBASE, (1<<32) - KERNBASE, 0, PTE_W);
 
 	// 检查初始页目录是否已正确设置
 	check_kern_pgdir();
