@@ -4,6 +4,8 @@
 
 #include <kern/monitor.h>
 #include <kern/console.h>
+#include <kern/pmap.h>
+#include <kern/kclock.h>
 
 // 测试栈回溯功能
 void test_backtrace(int x){
@@ -32,8 +34,10 @@ void i386_init(void){
 	cprintf("6.828 decimal is %o octal!\n", 6828);
 
 	// 测试栈回溯功能
-	test_backtrace(5);
+	// test_backtrace(5);
 
+	mem_init();
+	
 	// 陷入内核监控
 	while(1)
 		monitor(NULL);

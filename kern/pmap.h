@@ -9,7 +9,7 @@
 
 extern char bootstacktop[], bootstack[];
 
-extern struct PageIngo *pages;
+extern struct PageInfo *pages;
 extern size_t npages;
 
 extern pde_t *kern_pgdir;
@@ -63,7 +63,7 @@ static inline physaddr_t page2pa(struct PageInfo *pp){
 }
 
 // 将一个物理地址转换到对应的PageInfo结构体
-static inline sturct PageInfo *pa2page(physaddr_t pa){
+static inline struct PageInfo *pa2page(physaddr_t pa){
 	if(PGNUM(pa) >= npages)
 		panic("pa2page called with invalid pa");
 	return &pages[PGNUM(pa)];

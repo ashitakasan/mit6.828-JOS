@@ -83,10 +83,10 @@ static void *boot_alloc(uint32_t n){
 
 	result = nextfree;
 	if(n > 0){
-		uint32_t size = ROUNDUP(n, PGSIZE);
-		nextfree += size * PGSIZE;
-		if((uint32_t)nextfree - KERNBASE > npages * PGSIZE)
-			panic("Out of memory !\n");
+		nextfree = ROUNDUP(nextfree + n, PGSIZE);
+		if((uint32_t)nextfree - KERNBASE > (npages * PGSIZE))
+			panic("Cannot allocate any more physical memory. Requested %uK, available %uK.\n", 
+				(uint32_t) nextfree / 1024, npages * PGSIZE / 1024);
 	}
 	return result;
 }
@@ -102,15 +102,13 @@ void mem_init(void){
 	// 查询当前机器有多少可用内存页数
 	i386_detect_memory();
 
-	panic("mem_init: This function is developing\n");
-
 	// 初始化一个页目录
 	kern_pgdir = (pde_t *)boot_alloc(PGSIZE);
 	memset(kern_pgdir, 0, PGSIZE);
 
 	// 作为页表递归插入PD，以形成虚拟地址UVPT的虚拟页表
 
-	// 页表权限：内核可读，用户可读；UVPT 向后保存了 操作系统的页表kern_pgdir
+	// 权限：内核可读，用户可读；UVPT对应的页目录项保存了 操作系统的页表kern_pgdir 的物理地址和权限
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
 
 	// 分配一个包含 npages个PageInfo结构体的数组，保存在 pages 中；
@@ -132,11 +130,12 @@ void mem_init(void){
 
 	// 现在开始设置 虚拟内存
 	// 在线性地址 UPAGES 处映射用户只读页面
-	// 权限：UPAGES 处的映射：内核可读，用户可读；页面自身：内核读写，用户无权限
+	// 页目录权限：UPAGES 处的映射：内核可读，用户只读；
+	// 页面自身：内核读写，用户无权限
 
 	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(sizeof(struct PageInfo) * npages, PGSIZE), PADDR(pages), PTE_U);
 
-	// 使用物理内存，'bootstack'指代内核栈；内核堆栈从 虚拟地址KSTACKTOP向下生长，
+	// 使用物理内存，'bootstack'指代内核栈；内核堆栈从 虚拟地址KSTACKTOP向下生长，bootstack = 0xf010d000
 	// 我们考虑使用 [KSTACKTOP - PTSIZE, KSTACKTOP] 作为内核栈帧，但是要分成两部分：
 	// 	[KSTACKTOP-KSTKSIZE, KSTACKTOP) -- 由物理内存支持
 	// 	[KSTACKTOP-PTSIZE, KSTACKTOP-KSTKSIZE) -- 不支持；
@@ -150,7 +149,7 @@ void mem_init(void){
 	// 我们可能没有 2^32 - KERNBASE 的物理内存，但是无论如果我们只要设置映射；
 	// 权限：内核 RW，用户 无权限
 	
-	boot_map_region(kern_pgdir, KERNBASE, (1<<32) - KERNBASE, 0, PTE_W);
+	boot_map_region(kern_pgdir, KERNBASE, 0xfffff000 - KERNBASE, 0, PTE_W);
 
 	// 检查初始页目录是否已正确设置
 	check_kern_pgdir();
@@ -173,7 +172,7 @@ void mem_init(void){
 }
 
 /*
- 跟踪物理页面；pages 数组中，每个物理页面都有一个 PageInfo结构体；
+ 页目录初始化，跟踪物理页面；pages 数组中，每个物理页面都有一个 PageInfo结构体；
  页面被引用计数，空闲页面保存在链接列表中。
  初始化页结构和空闲内存链表；在此之后，再也不能使用 boot_alloc；
  只能使用 page_alloc 分配函数，通过 page_free_list 来分配和释放物理内存
@@ -195,6 +194,7 @@ void page_init(void){
 	size_t pgdir_size = ((size_t)boot_alloc(0) - KERNBASE) / PGSIZE;
 
 	for(i = 1; i < npages; i++){
+		// npages_basemem = 160, io_hole_size = 96, pgdir_size = 345
 		if(i == 0 || i == 7 || (i >= npages_basemem && i < npages_basemem + io_hole_size + pgdir_size)){
 			pages[i].pp_ref = 1;
 			continue;
@@ -212,7 +212,7 @@ void page_init(void){
  确保将分配页面的tp_link字段设置为NULL，以便page_free可以检查双重释放错误；
  如果内存溢出则返回空，可以使用 page2kva 和 memset
  */
-static PageInfo *page_alloc(int alloc_flags){
+struct PageInfo *page_alloc(int alloc_flags){
 	struct PageInfo *result;
 	if(page_free_list == NULL)			// 说明内存溢出
 		return NULL;
@@ -277,19 +277,22 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
 /*
  在 pgdir页表 中，映射虚拟地址空间 [va, va+size) 到物理地址 [pa, pa+size)；
  大小是 PGSIZE 的整数倍，虚拟地址va 和物理地址 pa都需要页面对齐；使用权限位 perm|PTE_P；
- 该函数仅仅为了设置 UTOP 以上的静态映射；因此，它不能改变映射页面的 pp_ref 字段
+ 该函数仅仅为了设置 UTOP 以上的静态映射；因此，它不能改变映射页面的 pp_ref 字段；
+ 映射和使用是不一样的，所以这里不需要改变 pages 中页的引用计数
  */
 static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm){
 	pte_t *pte;
 	uintptr_t cur_va = va;
 	physaddr_t cur_pa = pa;
 	uint64_t end_va = va + size;
-	uint32_t last_page = 4294963200LL;
+	uint32_t last_page = 0xfffff000;
+
+	cprintf("boot_map_region va = 0x%x, size = %d*%d, pa = 0x%x\n", va, size/PGSIZE, PGSIZE, pa);
 
 	while(cur_va < end_va){
 		pte = pgdir_walk(pgdir, (void *)cur_va, true);	// 建立页表项，分配一个页面
-		*pte = cur_pa | perm | PTE_P;
-		
+		*pte = PTE_ADDR(cur_pa) | perm | PTE_P;
+
 		if(cur_va >= last_page)
 			break;
 		cur_va += PGSIZE;

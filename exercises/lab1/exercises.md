@@ -34,7 +34,7 @@ movw    $0x1234,0x472				# warm boot
 但是kernel的C代码应该在 内存的高地址空间执行，因此需要通过地址转换，
 将虚拟的高地址空间 [3840MB, 3844MB]映射到物理的低地址空间 [0, 4MB]。
 kernel执行的第一步，就是将物理地址页表（entrypgdir.c）加载到 cr3寄存器中，启用页表；
-然后从低地址空间跳到高地址空间，清除帧指针寄存器（EBP），设置设置栈指针，开始执行C代码。
+然后从低地址空间跳到高地址空间，清除帧指针寄存器（EBP），设置设置栈指针（ESP），开始执行C代码。
 ```ASM
 movl    $0x0,%ebp					# nuke frame pointer
 movl    $(bootstacktop), %esp	# Set the stack pointer

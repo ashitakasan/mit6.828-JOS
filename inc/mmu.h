@@ -50,7 +50,7 @@
 #define PTXSHIFT		12		// 线性地址 PTX 偏移量
 #define PDXSHIFT		22		// 线性地址 PDX 偏移量
 
-// 页表/目录项标志
+// 页表/目录项标志，用最后12位来表示 当前页的标志位
 #define PTE_P		0x001	// 当前
 #define PTE_W		0x002	// 可写
 #define PTE_U		0x004	// 用户

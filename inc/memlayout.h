@@ -137,6 +137,7 @@
 
 #ifndef __ASSEMBLER__
 
+// 一个页目录 和 一个页表 大小都是 4KB，即一个页面
 typedef uint32_t pte_t;
 typedef uint32_t pde_t;
 
