@@ -41,9 +41,11 @@ mystery_t 应该是 uintptr_t；
 				PTSIZE = 4MB	+-------------------------------+ 0xEFFF8000, 内核栈，由物理页面支持
 						  |	|							|
 						 ---	+-------------------------------+ 0xEFC00000, 内核栈结束
-							|							|
+							|							| 4MB
+	ULIM, MMIOBASE	------->	+-------------------------------+ 0xEF800000, 用户空间顶层
+							|							| 4MB
 	UVPT	---------------->	+-------------------------------+ 0xEF400000, 其对应的页目录项为kern_pgdir首地址，保护 kern_pgdir对应的物理页
-							|							|
+							|							| 4MB
 	UPAGES	---------------->	+-------------------------------+ 0xEF000000, 其对应的物理页保存 pages，用户只读
 
 #### memory map
@@ -69,13 +71,13 @@ map va = 0xf0000000, size = 65535*4096, pa = 0x0
 
 Physical memory: 131072K available, base = 640K, extended = 130432K
 实际可用 128MB，qemu模拟器为 JOS分配了 128MB的物理内存；
-操作系统支持 2^32 字节，即 4GB
+操作系统支持 2GB 内存，因为 UPAGES 最大为 4MB，即最多有 4MB / sizeof(struct PageInfo) = 512K 个物理页面，工 512K * 4KB = 2GB。
 
 
 ## 5. How much space overhead is there for managing memory, if we actually had the maximum amount of physical memory? How is this overhead broken down?
 
-如果有 4GB 物理内存，则内存管理开销一共 12292KB；
-其中由 一个页目录 4KB，1024个页表 1024*4KB，2^20 个 PageInfo结构 8MB。
+如果有 2GB 物理内存，则内存管理开销一共 6MB + 4KB；
+其中由 一个页目录 4KB，1024个页表 512*4KB（每个页表有1000个页面），2^19 个 PageInfo结构 4MB。
 
 
 ## 6. Revisit the page table setup in kern/entry.S and kern/entrypgdir.c. Immediately after we turn on paging, EIP is still a low number (a little over 1MB). At what point do we transition to running at an EIP above KERNBASE? What makes it possible for us to continue executing at a low EIP between when we enable paging and when we begin running at an EIP above KERNBASE? Why is this transition necessary?
