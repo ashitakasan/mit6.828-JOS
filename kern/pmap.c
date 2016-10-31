@@ -172,7 +172,7 @@ void mem_init(void){
 }
 
 /*
- 页目录初始化，跟踪物理页面；pages 数组中，每个物理页面都有一个 PageInfo结构体；
+ 页结构初始化，用来跟踪物理页面；pages 数组中，每个物理页面都有一个 PageInfo结构体；
  页面被引用计数，空闲页面保存在链接列表中。
  初始化页结构和空闲内存链表；在此之后，再也不能使用 boot_alloc；
  只能使用 page_alloc 分配函数，通过 page_free_list 来分配和释放物理内存
