@@ -36,11 +36,26 @@ void i386_init(void){
 	// 测试栈回溯功能
 	// test_backtrace(5);
 
+	// Lab 2 内存管理初始化
 	mem_init();
+
+	// Lab 3 用户环境初始化
+	env_init();
+	trap_init();
+
+#if defined(TEST)
+	// 不要直接用这里 - 通过分级脚本使用
+	ENV_CREATE(TEST, ENV_TYPE_USER);
+#else
+	ENV_CREATE(user_hello, ENV_TYPE_USER);
+#endif
 	
+	// 现在只有一个用户环境
+	env_run(&envs[0]);
+
 	// 陷入内核监控
-	while(1)
-		monitor(NULL);
+	// while(1)
+	// 	monitor(NULL);
 }
 
 // 可变的 panicstr包含第一次调用 panic的参数，

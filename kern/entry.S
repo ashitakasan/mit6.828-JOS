@@ -1,5 +1,6 @@
 #include <inc/mmu.h>
 #include <inc/memlayout.h>
+#include <inc/trap.h>
 
 # 右移逻辑
 #define SRL(val, shamt)		(((val) >> (shamt)) & ~(-1 << (32 - (shamt))))

@@ -107,11 +107,11 @@
  * 他们是在ENV分配时，映射的全局网页
  */
 
-// 用户只读虚拟页表 (see 'uvpt' below)
+// 用户虚拟页表 虚拟地址 (see 'uvpt' below)
 #define UVPT			(ULIM - PTSIZE)
-// 只读页面结构的副本
+// 用户页面结构 虚拟地址
 #define UPAGES		(UVPT - PTSIZE)
-// 只读全局的env结构的副本
+// Env 结构 虚拟地址
 #define UENVS		(UPAGES - PTSIZE)
 
 /*
