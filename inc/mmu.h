@@ -143,18 +143,18 @@
 
 // 段描述符
 struct Segdesc {
-	unsigned sd_lim_15_0 : 16;  // 段限制低位
+	unsigned sd_lim_15_0 : 16;  // 段限长低位
 	unsigned sd_base_15_0 : 16; // 段基址的低位
 	unsigned sd_base_23_16 : 8; // 段基址的中间位
 	unsigned sd_type : 4;       // 段类型 (see STS_ constants)
 	unsigned sd_s : 1;          // 0 = 系统, 1 = 应用
 	unsigned sd_dpl : 2;        // 描述符权限级别
 	unsigned sd_p : 1;          // Present
-	unsigned sd_lim_19_16 : 4;  // 段限制高位
+	unsigned sd_lim_19_16 : 4;  // 段限长高位
 	unsigned sd_avl : 1;        // 未使用（可用于软件使用）
 	unsigned sd_rsv1 : 1;       // 保留的
 	unsigned sd_db : 1;         // 0 = 16-bit segment, 1 = 32-bit segment
-	unsigned sd_g : 1;          // Granularity: limit scaled by 4K when set
+	unsigned sd_g : 1;          // 粒度: limit scaled by 4K when set
 	unsigned sd_base_31_24 : 8; // 段基址的高位
 };
 
