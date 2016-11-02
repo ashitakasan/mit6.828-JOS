@@ -94,6 +94,12 @@ void env_init(void){
 	for(; i >= 0; i--){
 		env_p = &envs[i];
 		env_p->env_id = 0;
+		env_p->env_parent_id = 0;
+		env_p->env_type = ENV_TYPE_USER;
+		env_p->env_status = 0;
+		env_p->env_runs = 0;
+		env_p->env_pgdir = NULL;
+
 		env_p->env_link = env_free_list;
 		env_free_list = env_p;
 	}
@@ -207,5 +213,193 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id){
 	return 0;
 }
 
+/*
+  为环境env分配len字节的物理内存，并将其映射到环境地址空间中的虚拟地址va；
+  不要置零或以其他方式初始化映射页面；页面应该可被用户和内核写；如果分配失败则报错
+ */
+static void region_alloc(struct Env *e, void *va, size_t len){
+	uint32_t cur_va = ROUNDDOWN(va, PGSIZE);
+	uint64_t end_va = ROUNDUP(va + len, PGSIZE);
+	uint32_t last_page = 0xfffff000;
 
+	cprintf("region_alloc env[%d] at va = %08x with len = %d\n", e->env_id, va, len);
 
+	struct PageInfo *pp;
+	while(cur_va < end_va && cur_va <= last_page){
+		pp = page_alloc(0);
+		if(!pp){
+			panic("page_alloc failed\n");
+		}
+		if(page_insert(e->env_pgdir, pp, (void *)cur_va, PTE_U | PTE_W) != 0){
+			panic("page_insert failed to alloc at %p of len %x\n", va, len);
+		}
+		cur_va += PGSIZE;
+	}
+}
+
+/*
+  设置用户进程的初始二进制程序，堆栈和处理器标志；
+  此函数仅在内核初始化期间，在运行第一个用户模式环境之前调用；
+
+  此函数将所有可加载段从ELF二进制映像加载到环境的用户内存中，从ELF程序头中指示的适当虚拟地址开始执行；
+  同时，它将 在程序头中标记为被映射但实际上不存在于ELF文件中的这些段清零，即程序的bss部分；
+  所有这一切都非常类似于我们的引导加载程序bootloader，除了bootloader需要从磁盘读取代码；
+  最后，此函数映射一个页面为程序的初始栈帧；
+  如果函数遇到问题则报错 panics
+ */
+static void load_icode(struct Env *e, uint8_t *binary){
+	// 将每个程序段装入虚拟内存中的 ELF头中指定的地址处；
+	// 你应该只加载 ph->p_type == ELF_PROG_LOAD 的段；
+	// 每个段的虚拟地址可以在 ph->p_va 中找到，其在内存中的大小可以在 ph->p_memsz 中找到；
+	// ELF文件 从'binary + ph->p_offset'开始的 ph->p_filesz 字节，应该被复制到虚拟地址 ph->p_va；
+	// 剩余内存应清零（ELF头应有 ph->p_filesz <= ph->p_memsz），使用上个实验的函数 分配和映射页面；
+	// 
+	// 所有页保护位现在应该是用户读/写；
+	// ELF段不一定页面对齐，但你可以假设这个函数没有两个段会触及同一虚拟页面；可使用 region_alloc；
+	// 如果可以将数据直接移动到 内存中ELF二进制中的虚拟地址处，则加载段简单得多；
+	// 	所以在这个函数期间哪个页目录应该有效 ?
+	// 您还必须对程序的入口点执行某些操作，以确保环境开始在那里执行
+
+	struct Elf *elfhdr = (struct Elf *)binary;
+	if(elfhdr->e_magic != ELF_MAGIC)
+		panic("read ELF file failed: magic %x number error\n", elfhdr->e_magic);
+
+	struct Proghdr *ph = (struct Proghdr *)(binary + elfhdr->e_phoff);
+	struct Proghdr *eph = ph + elfhdr->e_phnum;
+
+	lcr3(PADDR(e->env_pgdir));					// 为 环境 e 映射
+
+	for(; ph < eph; ph++){
+		if(ph->p_type != ELF_PROG_LOAD)
+			continue;
+		if(ph->p_filesz > ph->p_memsz)
+			panic("file size is great than memory size\n");
+
+		region_alloc(e, (void *)ph->p_va, ph->p_memsz);
+		memmove((void *)ph->p_va, binary+ph->p_offset, ph->p_filesz);
+		memset((void *)(ph->p_va + ph->p_filesz), 0, ph->p_memsz - ph->p_filesz);
+	}
+
+	e->env_tf.tf_eip = elfhdr->e_entry;			// 设置指令执行地址
+
+	// 现在为程序的初始栈帧映射一个页面，在虚拟地址 USTACKTOP - PGSIZE 处
+	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
+
+	lcr3(PADDR(kern_pgdir));
+}
+
+/*
+  使用env_alloc分配新的env，使用load_icode将命名的elf二进制加载到其中，并设置其env_type；
+  此函数仅在内核初始化期间，在运行第一个用户模式环境之前调用；新的 env 的 parent_id 设为 0
+ */
+void env_create(uint8_t *binary, enum EnvType type){
+	struct Env *env;
+	int r = env_alloc(&env, 0);
+	if(r < 0){
+		panic("env_create: %e\n", r);
+		return;
+	}
+
+	load_icode(env, binary);
+	env->env_type = type;
+}
+
+/*
+  释放一个Env和它使用的所有内存
+ */
+void env_free(struct Env *){
+	pte_t *pte;
+	uint32_t pdeno, pteno;
+	physaddr_t pa;
+
+	// 如果释放当前环境，在释放页目录之前切换到kern_dir，以防页面重用
+	if(e == curenv)
+		lcr3(PADDR(kern_pgdir));
+
+	cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+
+	// 清空地址空间的用户部分（UTOP以下）的所有映射页面
+	static_assert(UTOP % PTSIZE == 0);
+	for(pdeno = 0; pdeno < PDX(UTOP); pdeno++){
+		// 只查看映射过的页表
+		if(!(e->env_pgdir[pdeno] & PTE_P))
+			continue;
+
+		// 找到页表的 pa 和 va
+		pa = PTE_ADDR(e->env_pgdir[pdeno]);
+		pte = (pte_t *) KADDR(pa);
+
+		for(pteno = 0; pteno < NPTENTRIES; pteno++){
+			if(pte[pteno] & PTE_P)
+				page_remove(e->env_pgdir, PGADDR(pdeno, pteno, 0));
+		}
+
+		// 释放页表自身
+		e->env_pgdir[pdeno] = 0;
+		page_decref(pa2page(pa));
+	}
+	// 释放页目录自身
+	pa = PADDR(e->env_pgdir);
+	e->env_pgdir = 0;
+	page_decref(pa2page(pa));
+
+	e->env_status = ENV_FREE;
+	e->env_link = env_free_list;
+	env_free_list = e;
+}
+
+/*
+  释放用户环境，进入内核监控
+ */
+void env_destroy(struct Env *e){
+	env_free(e);
+	cprintf("Destroyed the only environment - nothing more to do!\n");
+	while(1)
+		monitor(NULL);
+}
+
+/*
+  使用“iret”指令恢复Trapframe中的寄存器值；退出内核并开始执行 用户环境的代码；
+  该函数不会返回
+ */
+void env_pop_tf(struct Trapframe *tf){
+	asm volatile(
+		"\tmovl %0,%%esp\n"
+		"\tpopal\n"
+		"\tpopl %%es\n"
+		"\tpopl %%ds\n"
+		"\taddl $0x8,%%esp\n"		/* skip tf_trapno and tf_errcode */
+		"\tiret\n"
+		: : "g" (tf) : "memory");
+	panic("iret failed");		/* mostly to placate the compiler */
+}
+
+/*
+  上下文从当前环境 curent 切换到环境 e；如果这是第一次调用env_run，current是NULL；
+  该函数不会返回
+ */
+void env_run(struct Env *e){
+	// 如果这是一个上下文切换（一个新环境将要运行）
+	// 	1. 将当前环境（如果有）设置回ENV_RUNNABLE，如果它是ENV_RUNNING（考虑其他可能的状态）
+	// 	2. 设置 'curenv' 到新环境
+	// 	3. 将其状态 status 设置为ENV_RUNNING
+	// 	4. 更新它的'env_runs'计数器
+	// 	5. 使用 lcr3() 切换到其地址空间
+	// 使用 env_pop_tf() 恢复环境的寄存器，并进入环境中的用户模式
+	// 
+	// 此函数从 e->env_tf 加载新环境的状态；
+	// 回到上面写的代码，并确保已将 e->env_tf 的相关部分设置为合理的值
+
+	if(curenv == NULL || e->env_id != curenv->env_id){
+		if(curenv != NULL && curenv->env_status == ENV_RUNNING)
+			curenv->env_status = ENV_RUNNABLE;
+
+		curenv = e;
+		curenv->env_status = ENV_RUNNING;
+		curenv->env_runs++;
+
+		lcr3(PADDR(curenv->env_pgdir));
+	}
+
+	env_pop_tf(&e->env_tf);
+}
