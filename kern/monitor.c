@@ -9,6 +9,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/trap.h>
 
 #define CMDBUF_SIZE 80	// VGA 命令行长度
 
@@ -126,6 +127,9 @@ void monitor(struct Trapframe *tf){
 
 	cprintf("Welcome to the MIT6.828-JOS kernel monirot!\n");
 	cprintf("Type 'help' for a list of commands.\n");
+
+	if(tf != NULL)
+		print_trapframe(tf);
 
 	while(1){
 		buf = readline("K> ");
