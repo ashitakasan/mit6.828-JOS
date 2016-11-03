@@ -222,7 +222,7 @@ static void region_alloc(struct Env *e, void *va, size_t len){
 	uint64_t end_va = ROUNDUP(va + len, PGSIZE);
 	uint32_t last_page = 0xfffff000;
 
-	cprintf("region_alloc env[%d] at va = %08x with len = %d\n", e->env_id, va, len);
+	cprintf("region_alloc env[%08x] at va = %08x with len = %d\n", e->env_id, va, len);
 
 	struct PageInfo *pp;
 	while(cur_va < end_va && cur_va <= last_page){
