@@ -6,6 +6,7 @@
 
 #include <kern/pmap.h>
 #include <kern/kclock.h>
+#include <kern/env.h>
 
 // 这些变量被 i386_detect_memory() 函数设置
 size_t npages;							// 物理内存总量
@@ -107,7 +108,6 @@ void mem_init(void){
 	memset(kern_pgdir, 0, PGSIZE);
 
 	// 作为页表递归插入PD，以形成虚拟地址UVPT的虚拟页表
-
 	// 权限：内核可读，用户可读；UVPT对应的页目录项保存了 操作系统的页表kern_pgdir 的物理地址和权限
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
 
@@ -118,6 +118,12 @@ void mem_init(void){
 	int pages_size = npages * sizeof(struct PageInfo);
 	pages = (struct PageInfo *) boot_alloc(pages_size);
 	memset(pages, 0, pages_size);
+
+	// 使 envs 指向一个 NENV 大小的 struct Env 数组
+
+	int envs_size = NENV * sizeof(struct Env);
+	envs = (struct Env *) boot_alloc(envs_size);
+	memset(envs, 0, envs_size);
 
 	// 现在已经分配了初始化的内核数据结构，并设置了空闲物理页面列表；
 	// 一旦这样做，所有进一步的内存管理将通过 page_* function 实现；
@@ -134,6 +140,12 @@ void mem_init(void){
 	// 页面自身：内核读写，用户无权限
 
 	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(sizeof(struct PageInfo) * npages, PGSIZE), PADDR(pages), PTE_U);
+
+	// 映射 envs 数组到线性地址 UENVS，只读权限 （perm = PTE_U | PTE_P）
+	// 页目录权限：UPAGES 处的映射：内核可读，用户只读；
+	// 页面自身：内核读写，用户无权限
+
+	boot_map_region(kern_pgdir, UENVS, ROUNDUP(envs_size, PGSIZE), PADDR(envs), PTE_U);
 
 	// 使用物理内存，'bootstack'指代内核栈；内核堆栈从 虚拟地址KSTACKTOP向下生长，bootstack = 0xf010d000
 	// 我们考虑使用 [KSTACKTOP - PTSIZE, KSTACKTOP] 作为内核栈帧，但是要分成两部分：
@@ -369,6 +381,21 @@ void tlb_invalidate(pde_t *pgdir, void *va){
 	invlpg(va);
 }
 
+static uintptr_t user_mem_check_addr;
+
+int user_mem_check(struct Env *env, const void *va, size_t len, int perm){
+
+	return 0;
+}
+
+void user_mem_assert(struct Env *env, const void *va, size_t len, int perm){
+	if(user_mem_check(env, va, len, perm | PTE_U) < 0){
+		cprintf("[%08x] user_mem_check assertion failure for va %08x\n", 
+				env->env_id, user_mem_check_addr);
+		env_destroy(env);			// 可能不会返回
+	}
+}
+
 /**
  * 检查功能
  */
@@ -520,6 +547,10 @@ static void check_kern_pgdir(void){
 	for (i = 0; i < n; i += PGSIZE)
 		assert(check_va2pa(pgdir, UPAGES + i) == PADDR(pages) + i);
 
+	// check envs array (lab3)
+	n = ROUNDUP(NENV*sizeof(struct Env), PGSIZE);
+	for (i = 0; i < n; i += PGSIZE)
+		assert(check_va2pa(pgdir, UENVS + i) == PADDR(envs) + i);
 
 	// check phys mem
 	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
@@ -536,6 +567,7 @@ static void check_kern_pgdir(void){
 		case PDX(UVPT):
 		case PDX(KSTACKTOP-1):
 		case PDX(UPAGES):
+		case PDX(UENVS):
 			assert(pgdir[i] & PTE_P);
 			break;
 		default:
