@@ -353,7 +353,7 @@ void env_free(struct Env *){
  */
 void env_destroy(struct Env *e){
 	env_free(e);
-	cprintf("Destroyed the only environment - nothing more to do!\n");
+	cprintf("Destroyed the only environment - Enter the monitor!\n");
 	while(1)
 		monitor(NULL);
 }

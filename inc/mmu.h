@@ -266,8 +266,8 @@ struct Gatedesc {
     //   interfering with the current interrupt handler. A subsequent IRET
     //   instruction restores IF to the value in the EFLAGS image on the
     //   stack. An interrupt through a trap gate does not change IF."
-// - sel: 代码段选择 中断/陷阱处理程序
-// - off: 代码段偏移量 中断/陷阱处理程序
+// - sel: 中断/陷阱处理程序的 代码段选择
+// - off: 中断/陷阱处理程序的 代码段偏移量
 // - dpl: 描述符权限级别
 //	   对于软件所需的权限级别来调用此中断/陷阱门使用明确的int指令
 #define SETGATE(gate, istrap, sel, off, dpl)			\
@@ -283,7 +283,7 @@ struct Gatedesc {
 	(gate).gd_off_31_16 = (uint32_t) (off) >> 16;		\
 }
 
-// 建立呼叫门描述符
+// 建立调用门描述符
 #define SETCALLGATE(gate, sel, off, dpl)				\
 {													\
 	(gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;		\
