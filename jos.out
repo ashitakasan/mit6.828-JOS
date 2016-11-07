@@ -22,4 +22,4 @@ Incoming TRAP frame at 0xefffffbc
 Destroyed the only environment - Enter the monitor!
 Welcome to the MIT6.828-JOS kernel monitor!
 Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 14010
+qemu: terminating on signal 15 from pid 17343
