@@ -222,7 +222,7 @@ static void region_alloc(struct Env *e, void *va, size_t len){
 	uint32_t end_va = (uint32_t)ROUNDUP(va + len, PGSIZE);
 	uint32_t last_page = 0xfffff000;
 
-	cprintf("region_alloc env[%08x] at va = %08x with len = %d\n", e->env_id, va, len);
+	cprintf("ELF load: region_alloc env[%08x] at va = %08x with len = %d\n", e->env_id, va, len);
 
 	struct PageInfo *pp;
 	while(cur_va < end_va && cur_va <= last_page){
@@ -230,6 +230,7 @@ static void region_alloc(struct Env *e, void *va, size_t len){
 		if(!pp){
 			panic("page_alloc failed\n");
 		}
+		// 用 page_insert 将页面 pp 插入到 页目录中
 		if(page_insert(e->env_pgdir, pp, (void *)cur_va, PTE_U | PTE_W) != 0){
 			panic("page_insert failed to alloc at %p of len %x\n", va, len);
 		}
@@ -370,7 +371,7 @@ void env_pop_tf(struct Trapframe *tf){
 		"\tpopl %%es\n"
 		"\tpopl %%ds\n"
 		"\taddl $0x8,%%esp\n"		/* skip tf_trapno and tf_errcode */
-		"\tiret\n"
+		"\tiret\n"				/* iret 指令 跳转到用户空间执行 */
 		: : "g" (tf) : "memory");
 	panic("iret failed");		/* mostly to placate the compiler */
 }

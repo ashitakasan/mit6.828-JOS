@@ -11,10 +11,10 @@ boot_map_region va = 0xf0000000, size = 65535*4096, pa = 0x0
 check_kern_pgdir() succeeded!
 check_page_installed_pgdir() succeeded!
 [00000000] new env 00001000
-region_alloc env[00001000] at va = 00200000 with len = 15553
-region_alloc env[00001000] at va = 00800020 with len = 4056
-region_alloc env[00001000] at va = 00801000 with len = 8
-region_alloc env[00001000] at va = eebfd000 with len = 4096
+ELF load: region_alloc env[00001000] at va = 00200000 with len = 15553
+ELF load: region_alloc env[00001000] at va = 00800020 with len = 4056
+ELF load: region_alloc env[00001000] at va = 00801000 with len = 8
+ELF load: region_alloc env[00001000] at va = eebfd000 with len = 4096
 Incoming TRAP frame at 0xefffffbc
 Incoming TRAP frame at 0xefffffbc
 [00001000] user_mem_check assertion failure for va f010000c
@@ -22,4 +22,4 @@ Incoming TRAP frame at 0xefffffbc
 Destroyed the only environment - Enter the monitor!
 Welcome to the MIT6.828-JOS kernel monitor!
 Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 6805
+qemu: terminating on signal 15 from pid 14010

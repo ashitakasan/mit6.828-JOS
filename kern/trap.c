@@ -189,7 +189,7 @@ void trap(struct Trapframe *tf){
 	// 基于发生什么类型的陷阱进行调度
 	trap_dispatch(tf);
 
-	// 返回到当前环境，应该正在运行
+	// 返回到当前环境，应该正在运行，恢复发生中断的进程
 	assert(curenv && curenv->env_status == ENV_RUNNING);
 	env_run(curenv);
 }

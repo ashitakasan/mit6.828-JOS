@@ -8,7 +8,7 @@ const char *binaryname = "<unknown>";
 void libmain(int argc, char **argv){
 	// 设置 thisenv 指向 envs[] 中当前环境结构
 	
-	envid_t envid = sys_getenvid();
+	envid_t envid = sys_getenvid();		// 这里第一次陷入内核，执行系统调用
 	
 	thisenv = &envs[ENVX(envid)];
 
