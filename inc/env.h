@@ -29,7 +29,7 @@ enum {
 	ENV_FREE = 0,				// 表示Env结构处于非活动状态，因此在env_free_list上
 	ENV_DYING,					// Env结构表示一个僵尸环境，僵尸环境将在下一次陷入内核时释放
 	ENV_RUNNABLE,				// 表示当前运行环境 正在等待在处理器上运行
-	ENV_RUNING,					// 当前运行环境正在运行
+	ENV_RUNNING,					// 当前运行环境正在运行
 	ENV_NOT_RUNNABLE				// 当前运行环境处于活动状态，但没有准备好运行，比如正在等待与其他运行环境的 IPC
 };
 

@@ -1,0 +1,26 @@
++ ld obj/kern/kernel
++ mk obj/kern/kernel.img
+6.828 decimal is 15254 octal!
+Physical memory: 131072K available, base = 640K, extended = 130432K
+check_page_alloc() succeeded!
+check_page() succeeded!
+boot_map_region va = 0xef000000, size = 64*4096, pa = 0x177000
+boot_map_region va = 0xeec00000, size = 24*4096, pa = 0x1b7000
+boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x111000
+boot_map_region va = 0xf0000000, size = 65535*4096, pa = 0x0
+check_kern_pgdir() succeeded!
+check_page_installed_pgdir() succeeded!
+[00000000] new env 00001000
+region_alloc env[00001000] at va = 00200000 with len = 15527
+region_alloc env[00001000] at va = 00800020 with len = 4052
+region_alloc env[00001000] at va = 00801000 with len = 12
+region_alloc env[00001000] at va = eebfd000 with len = 4096
+Incoming TRAP frame at 0xefffffbc
+hello, world
+Incoming TRAP frame at 0xefffffbc
+[00001000] exiting gracefully
+[00001000] free env 00001000
+Destroyed the only environment - Enter the monitor!
+Welcome to the MIT6.828-JOS kernel monitor!
+Type 'help' for a list of commands.
+qemu: terminating on signal 15 from pid 12009

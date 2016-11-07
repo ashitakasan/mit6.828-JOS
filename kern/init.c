@@ -6,6 +6,8 @@
 #include <kern/console.h>
 #include <kern/pmap.h>
 #include <kern/kclock.h>
+#include <kern/env.h>
+#include <kern/trap.h>
 
 // 测试栈回溯功能
 void test_backtrace(int x){

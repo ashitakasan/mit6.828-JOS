@@ -21,7 +21,7 @@ static struct Trapframe *last_tf;
  */
 struct Gatedesc idt[256] = { { 0 } };
 struct Pseudodesc idt_pd = {
-	sizeof(idt) - 1, (uint32_t) idt;
+	sizeof(idt) - 1, (uint32_t) idt
 };
 
 extern uint32_t trap_handlers[];
@@ -62,12 +62,12 @@ void trap_init(void){
 	// LAB 3
 
 	int i=0;
-	for(; i < 20; i++){
+	for(; i < 256; i++){
 		SETGATE(idt[i], 0, GD_KT, trap_handlers[i], 0);
 	}
 
-	SETGATE(idt[T_BRKPT], 0, GD_KD, trap_handlers[T_BRKPT], 3);
-	SETGATE(idt[T_SYSCALL], 0, GD_KD, trap_handlers[T_SYSCALL], 3);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, trap_handlers[T_BRKPT], 3);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handlers[T_SYSCALL], 3);
 
 	trap_init_percpu();
 }
@@ -135,12 +135,6 @@ void print_regs(struct PushRegs *regs){
 
 static void trap_dispatch(struct Trapframe *tf){
 	// LAB 3: 处理处理器异常
-	
-	if(tf->tf_trapno == IRQ_SPURIOUS + IRQ_OFFSET){
-		cprintf("Spurious interrupt on irq 7\n");
-		print_trapframe(tf);
-		return;
-	}
 
 	switch(tf->tf_trapno){
 		case T_PGFLT:
@@ -186,7 +180,7 @@ void trap(struct Trapframe *tf){
 		// 将陷阱帧（其当前在堆栈上）复制到“curenv-> env_tf”中，以便运行环境将在陷阱点重新启动
 		curenv->env_tf = *tf;
 		// 从这里应该忽略堆栈上的陷阱帧
-		tf = &curent->env_tf;
+		tf = &curenv->env_tf;
 	}
 
 	// 记录tf是最后一个真正的陷阱帧，因此print_trapframe可以打印一些附加信息
@@ -196,8 +190,8 @@ void trap(struct Trapframe *tf){
 	trap_dispatch(tf);
 
 	// 返回到当前环境，应该正在运行
-	assert(curenv & curenv->env_status == ENV_RUNNING);
-	env_run();
+	assert(curenv && curenv->env_status == ENV_RUNNING);
+	env_run(curenv);
 }
 
 void page_fault_handler(struct Trapframe * tf){
@@ -208,10 +202,7 @@ void page_fault_handler(struct Trapframe * tf){
 
 	// LAB 3: 处理内核模式页面错误
 
-	if(tf->tf_cs == GD_KT){
-		print_trapfram(tf);
-		panic("kernel page fault va %08x\n", fault_va);
-	}
+
 
 	// 我们已经处理了内核模式异常，所以如果我们到达这里，页面错误发生在用户模式
 	// 销毁导致故障的环境

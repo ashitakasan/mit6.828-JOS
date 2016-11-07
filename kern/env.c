@@ -53,7 +53,7 @@ struct Pseudodesc gdt_pd = {
   	0 表示成功，设置 *env_store 为 指定的 env
   	-E_BAD_ENV 表示错误，设置 *env_store 为 NULL
  */
-int evnid2env(envid_t envid, struct Env **env_store, bool checkperm){
+int envid2env(envid_t envid, struct Env **env_store, bool checkperm){
 	struct Env *e;
 
 	// 如果 envid 为 0，返回当前的运行环境
@@ -123,7 +123,7 @@ void env_init_percpu(void){
 	// 将内核文本段加载到CS
 	asm volatile("ljmp %0,$1f\n 1:\n" : : "i" (GD_KT));
 	// 为了良好的测量，清除本地描述符表(LDT)，因为我们不使用它
-	llgt(0);
+	lldt(0);
 }
 
 /*
@@ -218,8 +218,8 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id){
   不要置零或以其他方式初始化映射页面；页面应该可被用户和内核写；如果分配失败则报错
  */
 static void region_alloc(struct Env *e, void *va, size_t len){
-	uint32_t cur_va = ROUNDDOWN(va, PGSIZE);
-	uint64_t end_va = ROUNDUP(va + len, PGSIZE);
+	uint32_t cur_va = (uint32_t)ROUNDDOWN(va, PGSIZE);
+	uint32_t end_va = (uint32_t)ROUNDUP(va + len, PGSIZE);
 	uint32_t last_page = 0xfffff000;
 
 	cprintf("region_alloc env[%08x] at va = %08x with len = %d\n", e->env_id, va, len);
@@ -307,7 +307,7 @@ void env_create(uint8_t *binary, enum EnvType type){
 /*
   释放一个Env和它使用的所有内存
  */
-void env_free(struct Env *){
+void env_free(struct Env *e){
 	pte_t *pte;
 	uint32_t pdeno, pteno;
 	physaddr_t pa;
@@ -353,6 +353,7 @@ void env_free(struct Env *){
  */
 void env_destroy(struct Env *e){
 	env_free(e);
+	
 	cprintf("Destroyed the only environment - Enter the monitor!\n");
 	while(1)
 		monitor(NULL);

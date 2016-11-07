@@ -125,7 +125,7 @@ static int runcmd(char *buf, struct Trapframe *tf){
 void monitor(struct Trapframe *tf){
 	char *buf;
 
-	cprintf("Welcome to the MIT6.828-JOS kernel monirot!\n");
+	cprintf("Welcome to the MIT6.828-JOS kernel monitor!\n");
 	cprintf("Type 'help' for a list of commands.\n");
 
 	if(tf != NULL)

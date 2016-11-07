@@ -59,15 +59,15 @@ struct Trapframe {
 	uint16_t tf_padding1;
 	uint16_t tf_ds;
 	uint16_t tf_padding2;
-	uint16_t tf_trapno;
+	uint32_t tf_trapno;
 	// 以下是 x86 硬件定义的
-	uint16_t tf_err;
-	uint16_t tf_eip;
+	uint32_t tf_err;
+	uintptr_t tf_eip;
 	uint16_t tf_cs;
 	uint16_t tf_padding3;
-	uint16_t tf_eflags;
+	uint32_t tf_eflags;
 	// 以下是仅当模式切换时，如从用户到内核 才用到
-	uint16_t tf_esp;
+	uintptr_t tf_esp;
 	uint16_t tf_ss;
 	uint16_t tf_padding4;
 }__attribute__((packed));

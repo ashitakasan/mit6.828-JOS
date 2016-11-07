@@ -11,7 +11,7 @@
 #include <inc/error.h>
 #include <inc/assert.h>
 #include <inc/env.h>
-#include <inc/memlayouty.h>
+#include <inc/memlayout.h>
 #include <inc/syscall.h>
 
 #define USERD(x)			(void)(x)

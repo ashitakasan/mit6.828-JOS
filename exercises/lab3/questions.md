@@ -11,3 +11,18 @@
 这里在 trap 初始化时，我们将所有中断的 DPL 都设置为 0，即 kernel 等级，
 而用户进程发生异常后，将带着特权等级 CPL = 3 来访问 IDT，这将导致一个 CPU 保护错误；
 如果允许 int $14 去调用 kernel 的页面错误回调，会导致 普通用户进程 不仅过 kernel 检查，就分配内存。
+
+
+## 3. The break point test case will either generate a break point exception or a general protection fault depending on how you initialized the break point entry in the IDT (i.e., your call to SETGATE from trap_init). Why? How do you need to set it up in order to get the breakpoint exception to work as specified above and what incorrect setup would cause it to trigger a general protection fault?
+
+在 IDT 表中，将断点 breakpoint 对应的中断描述符的特权等级 DPL 设置为 3，即用户可访问的级别，此时如果发生了 breakpoint 中断，
+就会直接跳到 IDT 表中指定的段上运行，因为此时用户特权等级 CPL = DPL；如果设置中断描述符表 DPL < 3，则会发生页保护异常，T_GPFLT。
+
+
+## 4. What do you think is the point of these mechanisms, particularly in light of what the user/softint test program does?
+
+内核 IDT 表的 DPL 来限制用户的访问，用户发起一个特权等级较高的中断时，CPU 发现 CPL > DPL，由此会引发一个 页保护异常 T_GPFLT；
+这样就仅仅给用户提供了部分可访问的中断向量，保护 kernel。
+
+
+
