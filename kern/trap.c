@@ -202,7 +202,10 @@ void page_fault_handler(struct Trapframe * tf){
 
 	// LAB 3: 处理内核模式页面错误
 
-
+	if(tf->tf_cs == GD_KT){
+		print_trapframe(tf);
+		panic("kernel page fault va %08x", fault_va);
+	}
 
 	// 我们已经处理了内核模式异常，所以如果我们到达这里，页面错误发生在用户模式
 	// 销毁导致故障的环境

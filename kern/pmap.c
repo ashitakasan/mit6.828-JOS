@@ -383,11 +383,40 @@ void tlb_invalidate(pde_t *pgdir, void *va){
 
 static uintptr_t user_mem_check_addr;
 
-int user_mem_check(struct Env *env, const void *va, size_t len, int perm){
+/*
+  检查环境 env 是否允许通过权限 perm | PTE_P 来访问地址范围 [va, va+len)；
+  通常“perm”将至少包含PTEU，但这不是必需的；
+  'va' 和 'len' 不一定内存页对齐，必须测试每个包含内存地址范围的页面；
+  可能会测试 'len/PGSIZE'、'len/PGSIZE + 1'、'len/PGSIZE + 2' 个页面；
 
+  如果（1）地址低于 ULIM，（2）页表给予它许可，用户程序可以访问虚拟地址；
+  这些是你应该在这里实现的测试。
+  如果存在错误，请将 'user_mem_check_addr' 变量设置为第一个错误的虚拟地址；
+  返回 0 表示用户程序可以访问该内存地址范围；否则返回 -E_FAULT
+ */
+int user_mem_check(struct Env *env, const void *va, size_t len, int perm){
+	uintptr_t start_va = (uintptr_t)ROUNDDOWN(va, PGSIZE);
+	uintptr_t end_va = (uintptr_t)ROUNDUP(va + len, PGSIZE);
+
+	pte_t *pte;
+	perm |= PTE_P;
+
+	while(start_va < end_va){
+		pte = pgdir_walk(env->env_pgdir, (void *)start_va, 0);
+		if(!pte || start_va >= ULIM || (*pte & perm) != perm){
+			user_mem_check_addr = start_va < (uintptr_t)va ? (uintptr_t)va : start_va;
+			return -E_FAULT;
+		}
+		start_va += PGSIZE;
+	}
 	return 0;
 }
 
+/*
+  检查环境 env 是否允许通过 perm | PTE_U | PTE_P 权限来访问内存范围 [va, va+len)；
+  如果可以，直接返回；
+  如果不能，就结束该 env，如果该 env 是当前运行环境，该函数可能不会返回
+ */
 void user_mem_assert(struct Env *env, const void *va, size_t len, int perm){
 	if(user_mem_check(env, va, len, perm | PTE_U) < 0){
 		cprintf("[%08x] user_mem_check assertion failure for va %08x\n", 

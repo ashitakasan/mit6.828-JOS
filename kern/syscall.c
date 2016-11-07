@@ -15,6 +15,7 @@
 static void sys_cputs(const char *s, size_t len){
 	// 检查用户是否有读取内存的权限[s，s + len]。如果没有，请销毁环境
 	
+	user_mem_assert(curenv, (void *)s, len, PTE_U);
 
 	// 打印用户提供的字符串
 	cprintf("%.*s", len, s);
