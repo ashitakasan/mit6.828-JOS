@@ -5,10 +5,11 @@
 #include <inc/assert.h>
 
 #include <kern/console.h>
+#include <kern/trap.h>
+#include <kern/picirq.h>
 
 static void cons_intr(int (*proc)(void));
 static void cons_putc(int c);
-
 
 /*
  由于历史的PC设计缺陷必要愚蠢的I/O延时子程序
@@ -371,7 +372,9 @@ void kbd_intr(void){
  键盘初始化
  */
 static void kbd_init(void){
-
+	// 排除kbd缓冲区，使QEMU产生中断
+	kdb_intr();
+	irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_KBD));
 }
 
 

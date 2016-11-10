@@ -13,6 +13,7 @@
 #include <inc/env.h>
 #include <inc/memlayout.h>
 #include <inc/syscall.h>
+#include <inc/trap.h>
 
 #define USERD(x)			(void)(x)
 
@@ -28,14 +29,47 @@ extern const volatile struct PageInfo pages[];
 // exit.c
 void exit(void);
 
+// pgfault.c
+void set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
+
 // readline.c
-char * readline(const char *buf);
+char *readline(const char *buf);
 
 // syscall.c
 void sys_cputs(const char *string, size_t len);
 int sys_cgetc(void);
 envid_t sys_getenvid(void);
 int sys_env_destroy(envid_t);
+
+void sys_yield(void);
+static envid_t sys_exofork(void);
+int sys_env_set_status(envid_t env, int status);
+int sys_env_set_pgfault_upcall(envid_t env, void *upcall);
+int sys_page_alloc(envid_t env, void *pg, int perm);
+int sys_page_map(envid_t src_env, void *stc_pg, envid_t dst_env, void *dst_pg, int perm);
+int sys_page_unmap(envid_t env, void *pg);
+int sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
+int sys_ipc_recv(void *rcv_pg);
+
+// 
+static inline envid_t __attribute__((always_inline)) sys_exofork(void){
+	envid_t ret;
+	asm volatile("int %2"
+				: "=a" (ret)
+				: "a" (SYS_exofork), "i" (T_SYSCALL));
+	return ret;
+}
+
+// ipc.c
+void ipc_send(envid_t to_env, uint32_t value, void *pg, int perm);
+int32_t ipc_recv(envid_t *from_env_store, void *pg, int *perm_store);
+envid_t ipc_find_env(enum EnvType type);
+
+// fork.c
+#define PTE_SHARE 0x400
+envid_t fork(void);
+envid_t sfork(void);
+
 
 // 文件打开模式
 #define O_RDONLY		0x0000		// 只读打开

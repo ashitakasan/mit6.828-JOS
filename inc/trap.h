@@ -72,6 +72,18 @@ struct Trapframe {
 	uint16_t tf_padding4;
 }__attribute__((packed));
 
+struct UTrapframe {
+	// 关于故障的信息
+	uint32_t utf_fault_va;		// T_PGFLT 表示 va, 否则为 0
+	uint32_t utf_err;
+	// 陷阱返回状态
+	struct PushRegs urf_regs;
+	uintptr_t utf_eip;
+	uint32_t utf_eflags;
+	// 陷阱栈返回
+	uintptr_t utf_esp;
+}__attribute__((packed));
+
 #endif /* !__ASSEMBLER__ */
 
 #endif /* !JOS_INC_TRAP_H */

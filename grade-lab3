@@ -19,7 +19,7 @@ def test_divzero():
 @test(10)
 def test_softint():
     r.user_test("softint")
-    r.match('Welcome to the .* kernel monitor!',
+    r.match('Welcome to the JOS kernel monitor!',
             'Incoming TRAP frame at 0xefffffbc',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000d General Protection',
@@ -85,7 +85,7 @@ def test_faultwritekernel():
 @test(5)
 def test_breakpoint():
     r.user_test("breakpoint")
-    r.match('Welcome to the .* kernel monitor!',
+    r.match('Welcome to the JOS kernel monitor!',
             'Incoming TRAP frame at 0xefffffbc',
             'TRAP frame at 0xf.......',
             '  trap 0x00000003 Breakpoint',
@@ -109,7 +109,7 @@ def test_hello():
             'i am environment 00001000',
             '.00001000. exiting gracefully',
             '.00001000. free env 00001000',
-            'Destroyed the only environment - Enter the monitor!')
+            'Destroyed the only environment - nothing more to do!')
 
 @test(5)
 def test_buggyhello():

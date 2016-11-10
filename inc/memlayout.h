@@ -135,6 +135,9 @@
 // 用户级的STABS数据结构的位置
 #define USTABDATA	(PTSIZE / 2)
 
+// 非引导CPU的启动代码的物理地址（APps）
+#define MPENTRY_PADDR	0x7000
+
 #ifndef __ASSEMBLER__
 
 // 一个页目录 和 一个页表 大小都是 4KB，即一个页面

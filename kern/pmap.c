@@ -7,6 +7,7 @@
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
+#include <kern/cpu.h>
 
 // 这些变量被 i386_detect_memory() 函数设置
 size_t npages;							// 物理内存总量
@@ -54,7 +55,9 @@ static void i386_detect_memory(void){
 /*
  设置 UTOP 以上的内存映射
  */
+static void mem_init_mp(void);
 static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
+
 static void check_page_free_list(bool only_low_memort);
 static void check_page_alloc(void);
 static void check_kern_pgdir(void);
@@ -163,6 +166,9 @@ void mem_init(void){
 	
 	boot_map_region(kern_pgdir, KERNBASE, 0xfffff000 - KERNBASE, 0, PTE_W);
 
+	// 初始化内存映射的 SMP 相关部分
+	mem_init_mp();
+
 	// 检查初始页目录是否已正确设置
 	check_kern_pgdir();
 
@@ -184,12 +190,22 @@ void mem_init(void){
 }
 
 /*
+  修改kern_dir中的映射以支持SMP
+  映射区域 [KSTACKTOP-PTSIZE，KSTACKTOP) 中的每个CPU堆栈
+ */
+static void mem_init_mp(void){
+	// LAB 4:
+}
+
+/*
  页结构初始化，用来跟踪物理页面；pages 数组中，每个物理页面都有一个 PageInfo结构体；
  页面被引用计数，空闲页面保存在链接列表中。
  初始化页结构和空闲内存链表；在此之后，再也不能使用 boot_alloc；
  只能使用 page_alloc 分配函数，通过 page_free_list 来分配和释放物理内存
  */
 void page_init(void){
+	// LAB 4: 更改您的代码，以将物理页面标记为 MPENTRY_PADDR 为正在使用
+	
 	// 这段代码将所有的物理页面标记为空闲；然而这不是真的；这些内存是空闲的：
 	// 1) 标记物理页面 0在使用中，这样，我们保留实模式IDT和BIOS结构，以防万一我们需要它们
 	// 2) 剩余的基本内存是空闲的，[PGSIZE, npages_basemem * PGSIZE)
@@ -378,7 +394,20 @@ void page_remove(pde_t *pgdir, void *va){
  使TLB条目无效，但只有当被编辑的页表是处理器当前使用的页表
  */
 void tlb_invalidate(pde_t *pgdir, void *va){
-	invlpg(va);
+	// 仅当我们修改当前地址空间时才刷新该条目
+	if(!curenv || curenv->env_pgdir == pgdir)
+		invlpg(va);
+}
+
+/*
+  保留MMIO区域中的 size 字节，并在此位置映射 [pa，pa + size]
+  返回保留区域的基址。 size 不必须是 PGSIZE 的倍数
+ */
+void mmio_map_region(physaddr_t pa, size_t size){
+	// LAB 4: 
+	static uintptr_t base = MMIOBASE;
+
+	panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;
@@ -475,6 +504,8 @@ static void check_page_free_list(bool only_low_memory){
 		assert(page2pa(pp) != EXTPHYSMEM - PGSIZE);
 		assert(page2pa(pp) != EXTPHYSMEM);
 		assert(page2pa(pp) < EXTPHYSMEM || (char *) page2kva(pp) >= first_free_page);
+		// (new test for lab 4)
+		assert(page2pa(pp) != MPENTRY_PADDR);
 
 		if (page2pa(pp) < EXTPHYSMEM)
 			++nfree_basemem;
@@ -586,9 +617,15 @@ static void check_kern_pgdir(void){
 		assert(check_va2pa(pgdir, KERNBASE + i) == i);
 
 	// check kernel stack
-	for (i = 0; i < KSTKSIZE; i += PGSIZE)
-		assert(check_va2pa(pgdir, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
-	assert(check_va2pa(pgdir, KSTACKTOP - PTSIZE) == ~0);
+	// (updated in lab 4 to check per-CPU kernel stacks)
+	for (n = 0; n < NCPU; n++) {
+		uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
+		for (i = 0; i < KSTKSIZE; i += PGSIZE)
+			assert(check_va2pa(pgdir, base + KSTKGAP + i)
+				== PADDR(percpu_kstacks[n]) + i);
+		for (i = 0; i < KSTKGAP; i += PGSIZE)
+			assert(check_va2pa(pgdir, base + i) == ~0);
+	}
 
 	// check PDE permissions
 	for (i = 0; i < NPDENTRIES; i++) {
@@ -597,6 +634,7 @@ static void check_kern_pgdir(void){
 		case PDX(KSTACKTOP-1):
 		case PDX(UPAGES):
 		case PDX(UENVS):
+		case PDX(MMIOBASE):
 			assert(pgdir[i] & PTE_P);
 			break;
 		default:
@@ -635,6 +673,7 @@ static void check_page(void){
 	struct PageInfo *fl;
 	pte_t *ptep, *ptep1;
 	void *va;
+	uintptr_t mm1, mm2;
 	int i;
 	extern pde_t entry_pgdir[];
 
@@ -776,6 +815,29 @@ static void check_page(void){
 	page_free(pp0);
 	page_free(pp1);
 	page_free(pp2);
+
+	// test mmio_map_region
+	mm1 = (uintptr_t) mmio_map_region(0, 4097);
+	mm2 = (uintptr_t) mmio_map_region(0, 4096);
+	// check that they're in the right region
+	assert(mm1 >= MMIOBASE && mm1 + 8096 < MMIOLIM);
+	assert(mm2 >= MMIOBASE && mm2 + 8096 < MMIOLIM);
+	// check that they're page-aligned
+	assert(mm1 % PGSIZE == 0 && mm2 % PGSIZE == 0);
+	// check that they don't overlap
+	assert(mm1 + 8096 <= mm2);
+	// check page mappings
+	assert(check_va2pa(kern_pgdir, mm1) == 0);
+	assert(check_va2pa(kern_pgdir, mm1+PGSIZE) == PGSIZE);
+	assert(check_va2pa(kern_pgdir, mm2) == 0);
+	assert(check_va2pa(kern_pgdir, mm2+PGSIZE) == ~0);
+	// check permissions
+	assert(*pgdir_walk(kern_pgdir, (void*) mm1, 0) & (PTE_W|PTE_PWT|PTE_PCD));
+	assert(!(*pgdir_walk(kern_pgdir, (void*) mm1, 0) & PTE_U));
+	// clear the mappings
+	*pgdir_walk(kern_pgdir, (void*) mm1, 0) = 0;
+	*pgdir_walk(kern_pgdir, (void*) mm1 + PGSIZE, 0) = 0;
+	*pgdir_walk(kern_pgdir, (void*) mm2, 0) = 0;
 
 	cprintf("check_page() succeeded!\n");
 }

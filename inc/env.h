@@ -54,7 +54,18 @@ struct Env {
 
 	uint32_t env_runs;			// 表示当前运行环境已经运行了多少次；
 
+	int env_cpunum;				// 运行env的CPU
+
 	pde_t *env_pgdir;			// 该变量保存当前运行环境的 页目录的内核虚拟地址，即地址空间
+
+	void *env_pgfault_upcall;	// 页面故障系统调用 入口点
+
+	// IPC
+	bool env_ipc_recving;		// Env 被阻止接收
+	void *env_ipc_dstva;			// VA 在哪里映射接收的页面
+	uint32_t env_ipc_value;		// 进程发送给我们的数据
+	envid_t env_ipc_from;		// 发送者的 envid
+	int env_ipc_perm;			// 收到页映射的权限
 };
 
 #endif // !JOS_INC_ENV_H
