@@ -194,7 +194,21 @@ void mem_init(void){
   映射区域 [KSTACKTOP-PTSIZE，KSTACKTOP) 中的每个CPU堆栈
  */
 static void mem_init_mp(void){
-	// LAB 4:
+	// 从 KSTACKTOP 开始，映射每个CPU堆栈，最多用于 NCPU 个CPU
+	// 对于CPU i，使用 percpu_kstacks[i] 指向的物理内存作为其内核堆栈
+	// CPU i的内核堆栈从虚拟地址 kstacktop_i = KSTACKTOP - i *(KSTKSIZE + KSTKGAP) 增长，
+	// 并分为两部分，就像在 mem_init 中设置的单个堆栈那样
+	// 	* [kstacktop_i - KSTKSIZE, kstacktop_i)  -- 由物理内存支持
+	// 	* [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
+	// 		-- 不支持，所以如果内核溢出它的堆栈，它会故障而不是覆盖另一个CPU堆栈，被称为“保护页面”
+	
+	int i=0;
+	uintptr_t kstacktop_i;
+
+	for(; i < NCPU; i++){
+		kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		boot_map_region(kern_pgdir, kstacktop_i, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
+	}
 }
 
 /*

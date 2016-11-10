@@ -1,3 +1,5 @@
+// 本地 APIC 管理内部 (非I/O) 中断
+
 #include <inc/types.h>
 #include <inc/memlayout.h>
 #include <inc/trap.h>
@@ -47,11 +49,14 @@ static void lapicw(int index, int value){
 	lapic[ID];					// 等待写入完成
 }
 
+/*
+  初始化 LAPIC，每个 CPU 都有一个 APIC 来接收中断
+ */
 void lapic_init(void){
 	if(!lapicaddr)
 		return;
 
-	// lapices是LAPIC的 4K MMIO区域的物理地址，将其映射到虚拟内存中，以便我们可以访问它
+	// lapices是 LAPIC 的 4K MMIO区域的物理地址，将其映射到虚拟内存中，以便我们可以访问它
 	lapic = mmio_map_region(lapicaddr, 4096);
 
 	// 定时器从 lapic[TICR] 总线频率重复递减计数，然后发出中断
@@ -66,7 +71,7 @@ void lapic_init(void){
 	if(thiscpu != bootcpu)
 		lapicw(LINT0, MASKED);
 
-	// 在所有CPU上禁用NMI（LINT1）
+	// 在所有CPU上禁用 NMI（LINT1）
 	lapicw(LINT1, MASKED);
 
 	// 在提供该中断条目的机器上禁用性能计数器溢出中断
@@ -86,7 +91,7 @@ void lapic_init(void){
 	while(lapic[ICRLO] & DELIVS)
 		;
 
-	// 在APIC上启用中断（但不在处理器上）
+	// 在 APIC 上启用中断（但不在处理器上）
 	lapicw(TPR, 0);
 }
 
@@ -110,30 +115,30 @@ static void microdelay(int us){
 #define IO_RTC 0x70
 
 /*
-  在addr处启动其他处理器运行的条目代码
+  在 addr 处启动其他处理器运行的条目代码
  */
-void lapic_startup(uint8_t apicid, uint32_t addr){
+void lapic_startap(uint8_t apicid, uint32_t addr){
 	int i;
 	uint16_t *wrv;
 
-	// BSP必须在[通用启动算法]之前将CMOS关断代码初始化为0AH，
+	// BSP必须在[通用启动算法]之前将CMOS关断代码初始化为 0AH，
 	// 并将热复位向量（DWORD基于40:67）指向AP启动代码，
-	outb(IO_RTC, 0xF);  // offset 0xF is shutdown code
+	outb(IO_RTC, 0xF);							// 偏移0xF是关闭代码
 	outb(IO_RTC+1, 0x0A);
-	wrv = (uint16_t *)KADDR((0x40 << 4 | 0x67));  // Warm reset vector
+	wrv = (uint16_t *)KADDR((0x40 << 4 | 0x67));	// 热复位向量
 	wrv[0] = 0;
 	wrv[1] = addr >> 4;
 
 	// 通用启动算法
-	// 发送INIT（电平触发）中断以复位其他CPU
+	// 发送 INIT（电平触发）中断以复位其他CPU
 	lapicw(ICRHI, apicid << 24);
 	lapicw(ICRLO, INIT | LEVEL | ASSERT);
 	microdelay(200);
 	lapicw(ICRLO, INIT | LEVEL);
 	microdelay(100);
 
-	// 发送启动IPI（两次）来输入代码
-	// 普通硬件由于INIT而处于暂停状态时，应该只接受STARTUP
+	// 发送启动 IPI（两次）来输入代码
+	// 普通硬件由于 INIT 而处于暂停状态时，应该只接受 STARTUP
 	// 所以第二个应该忽略，但它是官方Intel算法的一部分
 	for (i = 0; i < 2; i++) {
 		lapicw(ICRHI, apicid << 24);

@@ -8,6 +8,12 @@
 #include <kern/kclock.h>
 #include <kern/env.h>
 #include <kern/trap.h>
+#include <kern/sched.h>
+#include <kern/picirq.h>
+#include <kern/cpu.h>
+#include <kern/spinlock.h>
+
+static void boot_aps(void);
 
 // 测试栈回溯功能
 void test_backtrace(int x){
@@ -45,19 +51,84 @@ void i386_init(void){
 	env_init();
 	trap_init();
 
+	// LAB 4 多处理器初始化函数
+	mp_init();
+	lapic_init();
+
+	// LAB 4 多任务初始化函数
+	pic_init();
+
+	// 在唤醒 APs 之前获取大内核锁
+	
+
+	// 启动非引导CPU
+	boot_aps();
+
 #if defined(TEST)
 	// 不要直接用这里 - 通过分级脚本使用
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
-	ENV_CREATE(user_hello, ENV_TYPE_USER);
+	ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif
 	
+	sched_yield();
+
 	// 现在只有一个用户环境
-	env_run(&envs[0]);
+	// env_run(&envs[0]);
 
 	// 陷入内核监控
 	// while(1)
 	// 	monitor(NULL);
+}
+
+// 当boot_aps正在引导给定的CPU时，它将应该由 mpentry.S
+// 加载的每个核心的堆栈指针传递给该变量中的那个CPU
+void *mpentry_kstack;
+
+/*
+  启动非引导 (AP) 处理器
+ */
+static void boot_aps(void){
+	extern unsigned char mpentry_start[], mpentry_end[];
+	void *code;
+	struct CpuInfo *c;
+
+	// 在 MPENTRY_PADDR 处将入口代码 mpentry.S 写入未使用的存储器
+	code = KADDR(MPENTRY_PADDR);
+	memmove(code, mpentry_start, mpentry_end - mpentry_start);
+
+	// 每次引导 一个 AP
+	for(c = cpus; c < cpus + ncpu; c++){
+		if(c == cpus + cpunum())
+			continue;
+
+		// 告诉 mpentry.S 使用什么栈， 每个 CPU 有独立的栈
+		mpentry_kstack = percpu_kstacks[c - cpus] + KSTKSIZE;
+		// 在 mpentry_start 地址处启动 CPU
+		lapic_startap(c->cpu_id, PADDR(code));
+		// 等待CPU在 mp_main() 中完成一些基本设置，
+		while(c->cpu_status != CPU_STARTED)
+			;
+	}
+}
+
+/*
+  AP 的设置代码
+ */
+void mp_main(void){
+	// 我们现在在高EIP，安全地切换到 kern_pgdir
+	lcr3(PADDR(kern_pgdir));
+	cprintf("SMP: CPU %d starting\n", cpunum());
+
+	lapic_init();
+	env_init_percpu();
+	trap_init_percpu();
+	xchg(&thiscpu->cpu_status, CPU_STARTED);		// 告诉 boot_aps() 我们启动了
+
+	// 现在我们已经完成了一些基本设置，调用sched_yield()来开始在这个CPU上运行进程
+	// 但请确保每次只有一个CPU可以进入调度程序
+	
+	for(;;);
 }
 
 // 可变的 panicstr包含第一次调用 panic的参数，
@@ -79,7 +150,7 @@ void _panic(const char *file, int line, const char *fmt, ...){
 
 	va_start(ap, fmt);
 	// 内核发生错误的 文件+行数
-	cprintf("kernel panic at %s:%d: ", file, line);
+	cprintf("kernel panic on CPU %d at %s:%d: ", cpunum(), file, line);
 	vcprintf(fmt, ap);		// 打印可变参数
 	cprintf("\n");
 	va_end(ap);
@@ -96,8 +167,8 @@ void _warn(const char *file, int line, const char *fmt, ...){
 	va_list ap;
 
 	va_start(ap, fmt);
-	// 内核发生错误的 文件+行数
-	cprintf("kernel warning at %s:%d: ", file, line);
+	// 内核发生警告的 文件+行数
+	cprintf("kernel warning on CPU %d at %s:%d: ", cpunum(), file, line);
 	vcprintf(fmt, ap);
 	cprintf("\n");
 	va_end(ap);

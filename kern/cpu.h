@@ -34,6 +34,7 @@ extern physaddr_t lapicaddr;			// 本地APIC的物理MMIO地址
 extern unsigned char percpu_kstacks[NCPU][KSTKSIZE];
 
 int cpunum(void);
+
 #define thiscpu (&cpus[cpunum()])
 
 void mp_init(void);

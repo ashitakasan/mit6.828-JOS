@@ -8,7 +8,7 @@ uint16_t irq_mask_8259A = 0xFFFF & ~(1 << IRQ_SLAVE);
 static bool didinit;
 
 /*
-  初始化8259A中断控制器
+  初始化 8259A 中断控制器
  */
 void pic_init(void){
 	didinit = 1;
