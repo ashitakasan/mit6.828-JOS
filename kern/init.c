@@ -94,6 +94,7 @@ static void boot_aps(void){
 	struct CpuInfo *c;
 
 	// 在 MPENTRY_PADDR 处将入口代码 mpentry.S 写入未使用的存储器
+	// MPENTRY_PADDR 仅仅是在 CPU 引导期间使用的代码存放地址
 	code = KADDR(MPENTRY_PADDR);
 	memmove(code, mpentry_start, mpentry_end - mpentry_start);
 

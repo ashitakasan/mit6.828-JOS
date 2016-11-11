@@ -15,7 +15,7 @@
 #define GD_KD     0x10     // 内核数据
 #define GD_UT     0x18     // 用户文本
 #define GD_UD     0x20     // 用户数据
-#define GD_TSS0   0x28     // CPU 0 的 任务段选择
+#define GD_TSS0   0x28     // CPU 0 的 任务段选择 TSS
 
 /*
  * 		虚拟内存映射:                                		权限

@@ -8,6 +8,11 @@
 #include <kern/monitor.h>
 #include <kern/env.h>
 #include <kern/syscall.h>
+#include <kern/sched.h>
+#include <kern/kclock.h>
+#include <kern/picirq.h>
+#include <kern/cpu.h>
+#include <kern/spinlock.h>
 
 static struct Taskstate ts;
 
@@ -76,23 +81,52 @@ void trap_init(void){
   初始化并加载每个CPU的 TSS和IDT
  */
 void trap_init_percpu(void){
+	// 示例代码在此为CPU 0设置任务状态段 (TSS) 和TSS描述符
+	// 但是如果我们在其他CPU上运行是不正确的，因为每个CPU都有自己的内核堆栈
+	// 修复代码，使其适用于所有CPU
+	// 
+	// 提示：
+	// 	宏 thiscpu 总是指当前 CPU 的 struct CpuInfo
+	// 	当前CPU的ID由 cpunum() 或 thiscpu->cpu_id 给出
+	// 	使用 thiscpu->cpu_ts 作为当前CPU的 TSS，而不是全局 ts 变量
+	// 	对 CPU i 的 TSS 描述符使用 gdt[(GD_TSS0 >> 3) + i]
+	// 	将每个CPU内核堆栈映射到 mem_init_mp()
+	// 
+	// ltr在TSS选择器中设置一个“忙”标志，所以如果你不小心在多个CPU上加载了同一个TSS，你会得到一个三重故障
+	// 如果将某个CPU的TSS设置为错误，则在尝试从该CPU上的用户空间返回之前，可能不会出现故障
+	// LAB 4
+	
+	uint8_t cpuid = thiscpu->cpu_id;
+	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - cpuid * (KSTKSIZE + KSTKGAP);
+	thiscpu->cpu_ts.ts_ss0 = GD_KD;
+	thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
+
+	gdt[(GD_TSS0 >> 3) + cpuid] = 
+			SEG16(STS_T32A, (uint32_t)(&(thiscpu->cpu_ts)), sizeof(struct Taskstate) - 1, 0);
+	gdt[(GD_TSS0 >> 3) + cpuid].sd_s = 0;
+
+	ltr(GD_TSS0 + cpuid * sizeof(struct Segdesc));
+
+	lidt(&idt_pd);
+
 	// 设置一个TSS，以便当我们陷入内核时，我们得到正确的堆栈
-	ts.ts_esp0 = KSTACKTOP;
-	ts.ts_ss0 = GD_KD;
+	// ts.ts_esp0 = KSTACKTOP;
+	// ts.ts_ss0 = GD_KD;
+	// ts.ts_iomb = sizeof(struct Taskstate);
 
 	// 初始化gdt的 TSS槽
-	gdt[GD_TSS0 >> 3] = SEG16(STS_T32A, (uint32_t)(&ts), sizeof(struct Taskstate) - 1, 0);
-	gdt[GD_TSS0 >> 3].sd_s = 0;
+	// gdt[GD_TSS0 >> 3] = SEG16(STS_T32A, (uint32_t)(&ts), sizeof(struct Taskstate) - 1, 0);
+	// gdt[GD_TSS0 >> 3].sd_s = 0;
 
 	// 加载TSS选择器，像其他段选择器一样，底部三位是特殊的; 这里置零
-	ltr(GD_TSS0);
+	// ltr(GD_TSS0);
 
 	// 加载 IDT
-	lidt(&idt_pd);
+	// lidt(&idt_pd);
 }
 
 void print_trapframe(struct Trapframe *tf){
-	cprintf("TRAP frame at %p\n", tf);
+	cprintf("TRAP frame at %p from CPU %d\n", tf, cpunum());
 	print_regs(&tf->tf_regs);
 	cprintf("  es   0x----%04x\n", tf->tf_es);
 	cprintf("  ds   0x----%04x\n", tf->tf_ds);
@@ -155,6 +189,9 @@ static void trap_dispatch(struct Trapframe *tf){
 			return;
 	}
 
+	// 处理时钟中断；不要忘记在调用调度程序之前使用 lapic_eoi() 确认中断
+	// LAB 4
+
 	// 意外陷阱：用户进程或内核有错误
 	print_trapframe(tf);
 	if(tf->tf_cs == GD_KT)
@@ -169,13 +206,31 @@ void trap(struct Trapframe *tf){
 	// 环境可能已经设置DF，并且GCC的一些版本依赖于DF是清楚的
 	asm volatile("cld" ::: "cc");
 
+	// 如果有其他CPU调用panic()，停止这个CPU
+	extern char *panicstr;
+	if(panicstr)
+		asm volatile("hlt");
+
+	// 如果我们在 sched_yield() 上停止了，重新获取大内核锁
+	if(xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
+		lock_kernel();
+
 	// 检查中断是否禁用。 如果这个断言失败，不要试图通过在中断路径中插入“cli”来解决它
 	assert(!(read_eflags() & FL_IF));
 
-	cprintf("Incoming TRAP frame at %p\n", tf);
+	// cprintf("Incoming TRAP frame at %p\n", tf);
 
 	if((tf->tf_cs & 3) == 3){
+		// 用户态进入陷阱，在做任何严重的内核工作之前获取大内核锁
+		// LAB 4
 		assert(curenv);
+
+		// 如果当前的环境是一个僵尸，则进行垃圾收集
+		if(curenv->env_status == ENV_DYING){
+			env_free(curenv);
+			curenv = NULL;
+			sched_yield();
+		}
 
 		// 将陷阱帧（其当前在堆栈上）复制到“curenv-> env_tf”中，以便运行环境将在陷阱点重新启动
 		curenv->env_tf = *tf;
@@ -190,8 +245,14 @@ void trap(struct Trapframe *tf){
 	trap_dispatch(tf);
 
 	// 返回到当前环境，应该正在运行，恢复发生中断的进程
-	assert(curenv && curenv->env_status == ENV_RUNNING);
-	env_run(curenv);
+	// assert(curenv && curenv->env_status == ENV_RUNNING);
+	// env_run(curenv);
+	
+	// 如果我们执行到这里，那么没有其他环境被安排，所以我们应该返回到当前环境
+	if(curenv && curenv->env_status == ENV_RUNNING)
+		env_run(curenv);
+	else
+		sched_yield();
 }
 
 void page_fault_handler(struct Trapframe * tf){
@@ -206,6 +267,8 @@ void page_fault_handler(struct Trapframe * tf){
 		print_trapframe(tf);
 		panic("kernel page fault va %08x", fault_va);
 	}
+
+	// LAB 4
 
 	// 我们已经处理了内核模式异常，所以如果我们到达这里，页面错误发生在用户模式
 	// 销毁导致故障的环境

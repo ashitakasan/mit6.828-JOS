@@ -373,7 +373,7 @@ void kbd_intr(void){
  */
 static void kbd_init(void){
 	// 排除kbd缓冲区，使QEMU产生中断
-	kdb_intr();
+	kbd_intr();
 	irq_setmask_8259A(irq_mask_8259A & ~(1 << IRQ_KBD));
 }
 

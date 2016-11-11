@@ -190,7 +190,7 @@ void mem_init(void){
 }
 
 /*
-  修改kern_dir中的映射以支持SMP
+  修改 kern_dir 中的映射以支持 SMP
   映射区域 [KSTACKTOP-PTSIZE，KSTACKTOP) 中的每个CPU堆栈
  */
 static void mem_init_mp(void){
@@ -202,11 +202,12 @@ static void mem_init_mp(void){
 	// 	* [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
 	// 		-- 不支持，所以如果内核溢出它的堆栈，它会故障而不是覆盖另一个CPU堆栈，被称为“保护页面”
 	
-	int i=0;
+	int i = 0;
 	uintptr_t kstacktop_i;
 
+	cprintf("mem_init_mp for %d CPUs' kernel stack\n", NCPU);
 	for(; i < NCPU; i++){
-		kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		kstacktop_i = KSTACKTOP - (i+1) * (KSTKSIZE + KSTKGAP) + KSTKGAP;
 		boot_map_region(kern_pgdir, kstacktop_i, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
 	}
 }
@@ -414,14 +415,28 @@ void tlb_invalidate(pde_t *pgdir, void *va){
 }
 
 /*
-  保留MMIO区域中的 size 字节，并在此位置映射 [pa，pa + size]
+  保留内存映射I/O MMIO 区域中的 size 字节，并在此位置映射 [pa，pa + size]
   返回保留区域的基址。 size 不必须是 PGSIZE 的倍数
  */
-void mmio_map_region(physaddr_t pa, size_t size){
-	// LAB 4: 
+void *mmio_map_region(physaddr_t pa, size_t size){
+	// 从哪里开始下一个区域。 最初，这是MMIO区域的开始
+	// 因为这是静态的，它的值将在调用 mmio_map_region 之间保留（就像在boot_alloc中的nextfree）
+	// 注意：由于 check_page() 的测试，在正式调用此函数前， base 会更新两次，然后 base = 0xef803000
 	static uintptr_t base = MMIOBASE;
 
-	panic("mmio_map_region not implemented");
+	// 保留虚拟内存从基址开始的 size 字节，将物理页面 [pa, pa+size) 映射到虚拟地址 [base, base+size) 
+	// 由于这是设备内存，而不是常规的DRAM，你必须告诉CPU它是不安全的缓存访问这个内存
+	// 幸运的是，页表为此目的提供了位; 只需创建 PTE_PCD | PTE_PWT(高速缓存禁用和直写) 的映射以及PTE_W
+	// 确保将 size 向上取整到 PGSIZE 整数倍，并处理如果这个保留会溢出 MMIOLIM (可以简单地panic)
+	
+	size_t n_size = ROUNDUP(size, PGSIZE);
+	uintptr_t ret_base = base;
+	if(base + n_size >= MMIOLIM)
+		panic("mmio_map_region map %d bytes overflow MMIOLIM\n", n_size);
+
+	boot_map_region(kern_pgdir, base, n_size, pa, PTE_W | PTE_PCD | PTE_PWT);
+	base += n_size;
+	return (void *)ret_base;
 }
 
 static uintptr_t user_mem_check_addr;
