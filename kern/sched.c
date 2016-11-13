@@ -13,7 +13,31 @@ void sched_halt(void);
 void sched_yield(void){
 	struct Env *idle;
 
+	// 实现简单的轮询调度
+	// 从这个 CPU 上次运行的环境env 开始，以循环方式从 envs 中搜索 ENV_RUNNABLE 的环境env，
+	// 切换到第一个找到的这样的环境
+	// 
+	// 如果没有 envs 是可运行的，但以前在这个CPU上运行的环境仍然是 ENV_RUNNING，可以选择该环境
+	// 
+	// 千万不要 选择当前在另一个CPU上运行的环境 (env_status == ENV_RUNNING)
+	// 如果没有可运行的环境，只需直接到下面的代码停止cpu
 	// LAB 4
+
+	int start = curenv ? (curenv - envs) / sizeof(struct Env) : NENV - 1;
+	int i = start + 1;
+
+	for(; i%NENV != start; i++){
+		idle = &envs[i];
+		if(idle->env_status == ENV_RUNNABLE)
+			env_run(idle);
+	}
+
+	i = start + 1;
+	for(; i%NENV != start; i++){
+		idle = &envs[i];
+		if(idle->env_status == ENV_RUNNING && idle->env_cpunum == cpunum())
+			env_run(idle);
+	}
 	
 	sched_halt();
 }

@@ -15,11 +15,13 @@
  */
 static const char* const error_string[MAXERROR] = {
 	[E_UNSPECIFIED]	= "unspecified error",
-	[E_BAD_ENV]	= "bad environment",
-	[E_INVAL]	= "invalid parameter",
-	[E_NO_MEM]	= "out of memory",
+	[E_BAD_ENV]		= "bad environment",
+	[E_INVAL]		= "invalid parameter",
+	[E_NO_MEM]		= "out of memory",
 	[E_NO_FREE_ENV]	= "out of environments",
-	[E_FAULT]	= "segmentation fault",
+	[E_FAULT]		= "segmentation fault",
+	[E_IPC_NOT_RECV]	= "env is not recving",
+	[E_EOF]			= "unexpected end of file",
 };
 
 /**

@@ -2,9 +2,11 @@
 #define JOS_KERN_ENV_H
 
 #include <inc/env.h>
+#include <inc/cpu.h>
 
 extern struct Env *envs;			// 全部的 env变量
-extern struct Env *curenv;		// 当前使用的 env 变量
+// extern struct Env *curenv;		// 当前使用的 env 变量
+#define curenv (thiscpu->cpu_env)
 extern struct Segdesc gdt[];
 
 void	env_init(void);

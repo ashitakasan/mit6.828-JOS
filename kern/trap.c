@@ -221,9 +221,11 @@ void trap(struct Trapframe *tf){
 	// cprintf("Incoming TRAP frame at %p\n", tf);
 
 	if((tf->tf_cs & 3) == 3){
-		// 用户态进入陷阱，在做任何严重的内核工作之前获取大内核锁
+		// 从用户态进入陷阱，在做任何严重的内核工作之前获取大内核锁
 		// LAB 4
 		assert(curenv);
+
+		lock_kernel();
 
 		// 如果当前的环境是一个僵尸，则进行垃圾收集
 		if(curenv->env_status == ENV_DYING){
@@ -232,7 +234,7 @@ void trap(struct Trapframe *tf){
 			sched_yield();
 		}
 
-		// 将陷阱帧（其当前在堆栈上）复制到“curenv-> env_tf”中，以便运行环境将在陷阱点重新启动
+		// 将陷阱帧（其当前在堆栈上）复制到 curenv-> env_tf 中，以便运行环境将在陷阱点重新启动
 		curenv->env_tf = *tf;
 		// 从这里应该忽略堆栈上的陷阱帧
 		tf = &curenv->env_tf;

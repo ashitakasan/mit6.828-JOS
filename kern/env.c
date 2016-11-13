@@ -9,9 +9,12 @@
 #include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/monitor.h>
+#include <kern/sched.h>
+#include <kern/cpu.h>
+#include <kern/spinlock.h>
 
 struct Env *envs = NULL;				// 全部的运行环境
-struct Env *curenv = NULL;			// 当前运行环境
+// struct Env *curenv = NULL;			// 当前运行环境
 static struct Env *env_free_list;	// 空闲环境列表； env->env_link
 
 #define ENVGENSHIFT		12			// 大于等于 LOGNENV
@@ -26,7 +29,7 @@ static struct Env *env_free_list;	// 空闲环境列表； env->env_link
 // 因此，我们必须为用户和内核复制 段；
 // 特别的，在gdt的定义中使用的SEG宏的最后一个参数指定该描述符的描述符特权级别（DPL），内核 0，用户 3
 
-struct Segdesc gdt[] = {
+struct Segdesc gdt[NCPU + 5] = {
 	// 0, 未使用（总是故障 - 用于捕获NULL远指针）
 	SEG_NULL,
 	// 0x8 内核代码段
@@ -38,13 +41,13 @@ struct Segdesc gdt[] = {
 	// 0x20 用户数据段
 	[GD_UD >> 3] = SEG(STA_W, 0x0, 0xffffffff, 3),
 	// 0x28 tss，在 trap_init_percpu 中初始化
+	// 每CPU TSS描述符 (从GD_TSS0开始) 在 trap_init_percpu() 中初始化
 	[GD_TSS0 >> 3] = SEG_NULL
 };
 
 struct Pseudodesc gdt_pd = {
 	sizeof(gdt) - 1, (unsigned long)gdt
 };
-
 
 /*
   将 env_id 转换为 env 指针；
@@ -205,6 +208,16 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id){
 	e->env_tf.tf_cs = GD_UT | 3;
 	// e->env_tf.tf_eip 稍后修改
 
+	// 在用户模式下启用中断
+	// LAB 4
+	
+
+	// 清除页面错误处理程序，直到用户安装一个
+	e->env_pgfault_upcall = 0;
+
+	// 也清除IPC接收标志
+	e->env_ipc_recving = 0;
+
 	// 提交分配结果
 	env_free_list = e->env_link;
 	*newenv_store = e;
@@ -249,7 +262,7 @@ static void region_alloc(struct Env *e, void *va, size_t len){
   如果函数遇到问题则报错 panics
  */
 static void load_icode(struct Env *e, uint8_t *binary){
-	// 将每个程序段装入虚拟内存中的 ELF头中指定的地址处；
+	// 将每个程序段装入虚拟内存中的 ELF段头中指定的地址处；
 	// 你应该只加载 ph->p_type == ELF_PROG_LOAD 的段；
 	// 每个段的虚拟地址可以在 ph->p_va 中找到，其在内存中的大小可以在 ph->p_memsz 中找到；
 	// ELF文件 从'binary + ph->p_offset'开始的 ph->p_filesz 字节，应该被复制到虚拟地址 ph->p_va；
@@ -291,7 +304,9 @@ static void load_icode(struct Env *e, uint8_t *binary){
 
 /*
   使用env_alloc分配新的env，使用load_icode将命名的elf二进制加载到其中，并设置其env_type；
-  此函数仅在内核初始化期间，在运行第一个用户模式环境之前调用；新的 env 的 parent_id 设为 0
+  此函数仅在内核初始化期间，在运行第一个用户模式环境之前调用；新的 env 的 parent_id 设为 0；
+  env_create 只是初始化一个 env ，并未运行；
+  包括设置 env 结构的各个字段、内存空间、加载程序文件，env_status 设置为 ENV_RUNNABLE 等
  */
 void env_create(uint8_t *binary, enum EnvType type){
 	struct Env *env;
@@ -351,20 +366,36 @@ void env_free(struct Env *e){
 
 /*
   释放用户环境，进入内核监控
+  如果e是当前env，则运行一个新环境（并且不返回到调用者）
  */
 void env_destroy(struct Env *e){
+	// 如果e当前正在其他CPU上运行，我们将其状态更改为 ENV_DYING
+	// 僵尸环境将在下次陷入内核时释放
+	if(e->env_status == ENV_RUNNING && curenv != e){
+		e->env_status = ENV_DYING;
+		return;
+	}
+
 	env_free(e);
+
+	if(curenv == e){
+		curenv = NULL;
+		sched_yield();
+	}
 	
-	cprintf("Destroyed the only environment - Enter the monitor!\n");
-	while(1)
-		monitor(NULL);
+	// cprintf("Destroyed the only environment - Enter the monitor!\n");
+	// while(1)
+	// 	monitor(NULL);
 }
 
 /*
-  使用“iret”指令恢复Trapframe中的寄存器值；退出内核并开始执行 用户环境的代码；
+  使用 iret 指令恢复Trapframe中的寄存器值；退出内核并开始执行 用户环境的代码；
   该函数不会返回
  */
 void env_pop_tf(struct Trapframe *tf){
+	// 记录我们正在运行的CPU用于用户空间调试
+	curenv->env_cpunum = cpunum();
+
 	asm volatile(
 		"\tmovl %0,%%esp\n"
 		"\tpopal\n"
@@ -402,6 +433,8 @@ void env_run(struct Env *e){
 
 		lcr3(PADDR(curenv->env_pgdir));
 	}
+
+	unlock_kernel();
 
 	env_pop_tf(&e->env_tf);
 }

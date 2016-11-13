@@ -3,7 +3,7 @@
 
 #include <inc/types.h>
 
-// 提交此选项以禁用自旋锁调试
+// 注释此选项以禁用自旋锁调试
 #define DEBUG_SPINLOCK
 
 // 互斥锁

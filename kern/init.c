@@ -59,7 +59,9 @@ void i386_init(void){
 	pic_init();
 
 	// 在唤醒 APs 之前获取大内核锁
+	// LAB 4 
 	
+	lock_kernel();
 
 	// 启动非引导CPU
 	boot_aps();
@@ -126,10 +128,15 @@ void mp_main(void){
 	trap_init_percpu();
 	xchg(&thiscpu->cpu_status, CPU_STARTED);		// 告诉 boot_aps() 我们启动了
 
-	// 现在我们已经完成了一些基本设置，调用sched_yield()来开始在这个CPU上运行进程
+	// 现在我们已经完成了一些基本设置，调用 sched_yield() 来开始在这个CPU上运行进程
 	// 但请确保每次只有一个CPU可以进入调度程序
+	// LAB 4 
 	
-	for(;;);
+	lock_kernel();
+	
+	sched_yield();
+
+	// for(;;);
 }
 
 // 可变的 panicstr包含第一次调用 panic的参数，

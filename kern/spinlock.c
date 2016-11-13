@@ -10,6 +10,7 @@
 #include <kern/spinlock.h>
 #include <kern/kdebug.h>
 
+// 大内核锁
 struct spinlock kern_lock = {
 #ifdef DEBUG_SPINLOCK
 	.name = "kernel_lock"
@@ -17,7 +18,7 @@ struct spinlock kern_lock = {
 };
 
 #ifdef DEBUG_SPINLOCK
-// 通过跟踪％ebp链在pcs []中记录当前调用堆栈
+// 通过跟踪 ％ebp 链在 pcs[] 中记录当前调用堆栈
 static void get_caller_pcs(uint32_t pcs[]){
 	uint32_t *ebp;
 	int i;
@@ -26,8 +27,8 @@ static void get_caller_pcs(uint32_t pcs[]){
 	for(i = 0; i < 10; i++){
 		if(ebp == 0 || ebp < (uint32_t *)ULIM)
 			break;
-		pcs[i] = ebp[1];
-		ebp = (uint32_t *)ebp[0];
+		pcs[i] = ebp[1];					// 保存 eip
+		ebp = (uint32_t *)ebp[0];			// 保存 ebp
 	}
 	for(; i < 10; i++)
 		pcs[i] = 0;
@@ -65,6 +66,7 @@ void spin_lock(struct spinlock *lk){
 	while(xchg(&lk->locked , 1) != 0)
 		asm volatile("pause");
 
+	// 记录有关锁获取的调试信息
 #ifdef DEBUG_SPINLOCK
 	lk->cpu = thiscpu;
 	get_caller_pcs(lk->pcs);
@@ -79,7 +81,7 @@ void spin_unlock(struct spinlock *lk){
 	if(!holding(lk)){					// 错误
 		int i;
 		uint32_t pcs[10];
-		// Nab在被释放前 获得 EIP 链
+		// Nab 在被释放前 获得 EIP 链
 		memmove(pcs, lk->pcs, sizeof pcs);
 		cprintf("CPU %d cannot release %s: held by CPU %d\nAcquired at:",
 				cpunum(), lk->name, lk->cpu->cpu_id);
