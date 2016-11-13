@@ -77,7 +77,7 @@ struct UTrapframe {
 	uint32_t utf_fault_va;		// T_PGFLT 表示 va, 否则为 0
 	uint32_t utf_err;
 	// 陷阱返回状态
-	struct PushRegs urf_regs;
+	struct PushRegs utf_regs;
 	uintptr_t utf_eip;
 	uint32_t utf_eflags;
 	// 陷阱栈返回

@@ -23,18 +23,17 @@ void sched_yield(void){
 	// 如果没有可运行的环境，只需直接到下面的代码停止cpu
 	// LAB 4
 
-	int start = curenv ? (curenv - envs) / sizeof(struct Env) : NENV - 1;
-	int i = start + 1;
+	int start = curenv ? (curenv - envs) : NENV - 1;
+	int i;
 
-	for(; i%NENV != start; i++){
-		idle = &envs[i];
+	for(i = 1; i < NENV; i++){
+		idle = &envs[(start + i) % NENV];
 		if(idle->env_status == ENV_RUNNABLE)
 			env_run(idle);
 	}
 
-	i = start + 1;
-	for(; i%NENV != start; i++){
-		idle = &envs[i];
+	for(i = 0; i < NENV; i++){
+		idle = &envs[(start + i) % NENV];
 		if(idle->env_status == ENV_RUNNING && idle->env_cpunum == cpunum())
 			env_run(idle);
 	}

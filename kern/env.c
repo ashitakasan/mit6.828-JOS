@@ -146,7 +146,7 @@ static int env_setup_vm(struct Env *e){
 	// 现在，设置 e->env_pgdir 并初始化 页目录
 	//  - 所有 envs 的虚拟地址空间 UTOP 以上部分都相同（除了 UVPT），可以使用 kern_pgdir 为模板
 	//  - 虚拟地址空间的 UTOP 以下部分都 初始化为 空
-	//  - 不需要再调用page_alloc
+	//  - 不需要再调用 page_alloc
 	//  - 仅对于在 UTOP 上方映射的物理页，不维护pp_ref，需要增加env_pgdir的pp_ref以使env_free工作
 	
 	e->env_pgdir = page2kva(p);

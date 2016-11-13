@@ -11,7 +11,7 @@
 #include <kern/kdebug.h>
 
 // 大内核锁
-struct spinlock kern_lock = {
+struct spinlock kernel_lock = {
 #ifdef DEBUG_SPINLOCK
 	.name = "kernel_lock"
 #endif
@@ -87,7 +87,7 @@ void spin_unlock(struct spinlock *lk){
 				cpunum(), lk->name, lk->cpu->cpu_id);
 
 		for(i = 0; i < 10 && pcs[i]; i++){
-			struct Eipdebufinfo info;
+			struct Eipdebuginfo info;
 			if(debuginfo_eip(pcs[i], &info) >= 0)
 				cprintf("  %08x %s:%d: %.*s+%x\n", pcs[i], info.eip_file, 
 						info.eip_line, info.eip_fn_namelen, 

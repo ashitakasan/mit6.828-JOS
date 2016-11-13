@@ -2,7 +2,7 @@
 #define JOS_KERN_ENV_H
 
 #include <inc/env.h>
-#include <inc/cpu.h>
+#include <kern/cpu.h>
 
 extern struct Env *envs;			// 全部的 env变量
 // extern struct Env *curenv;		// 当前使用的 env 变量

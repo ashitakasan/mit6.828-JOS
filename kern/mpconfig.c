@@ -159,7 +159,7 @@ static struct mpconf *mpconfig(struct mp **pmp){
 void mp_init(void){
 	struct mp *mp;
 	struct mpconf *conf;
-	struct mpproc *porc;
+	struct mpproc *proc;
 	uint8_t *p;
 	unsigned int i;
 

@@ -3,23 +3,67 @@
 6.828 decimal is 15254 octal!
 Physical memory: 131072K available, base = 640K, extended = 130432K
 check_page_alloc() succeeded!
+boot_map_region va = 0xef800000, size = 2*4096, pa = 0x0
+boot_map_region va = 0xef802000, size = 1*4096, pa = 0x0
 check_page() succeeded!
-boot_map_region va = 0xef000000, size = 64*4096, pa = 0x178000
-boot_map_region va = 0xeec00000, size = 24*4096, pa = 0x1b8000
-boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x111000
+boot_map_region va = 0xef000000, size = 64*4096, pa = 0x26f000
+boot_map_region va = 0xeec00000, size = 31*4096, pa = 0x2af000
+boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x116000
 boot_map_region va = 0xf0000000, size = 65535*4096, pa = 0x0
+mem_init_mp for 8 CPUs' kernel stack
+boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x22d000
+boot_map_region va = 0xeffe8000, size = 8*4096, pa = 0x235000
+boot_map_region va = 0xeffd8000, size = 8*4096, pa = 0x23d000
+boot_map_region va = 0xeffc8000, size = 8*4096, pa = 0x245000
+boot_map_region va = 0xeffb8000, size = 8*4096, pa = 0x24d000
+boot_map_region va = 0xeffa8000, size = 8*4096, pa = 0x255000
+boot_map_region va = 0xeff98000, size = 8*4096, pa = 0x25d000
+boot_map_region va = 0xeff88000, size = 8*4096, pa = 0x265000
 check_kern_pgdir() succeeded!
 check_page_installed_pgdir() succeeded!
+enabled interrupts: 1 2
 [00000000] new env 00001000
-ELF load: region_alloc env[00001000] at va = 00200000 with len = 15553
-ELF load: region_alloc env[00001000] at va = 00800020 with len = 4056
-ELF load: region_alloc env[00001000] at va = 00801000 with len = 8
+ELF load: region_alloc env[00001000] at va = 00200000 with len = 19254
+ELF load: region_alloc env[00001000] at va = 00800020 with len = 6338
+ELF load: region_alloc env[00001000] at va = 00802000 with len = 212
 ELF load: region_alloc env[00001000] at va = eebfd000 with len = 4096
-Incoming TRAP frame at 0xefffffbc
-Incoming TRAP frame at 0xefffffbc
-[00001000] user_mem_check assertion failure for va f010000c
-[00001000] free env 00001000
-Destroyed the only environment - Enter the monitor!
+[00001000] user panic in <unknown> at lib/pgfault.c:15: set_pgfault_handler not implemented
+TRAP frame at 0xf02af000 from CPU 0
+  edi  0x00000000
+  esi  0x00801613
+  ebp  0xeebfdf90
+  oesp 0xefffffdc
+  ebx  0xeebfdfa4
+  edx  0xeebfde48
+  ecx  0x00000001
+  eax  0x00000001
+  es   0x----0023
+  ds   0x----0023
+  trap 0x00000003 Breakpoint
+  err  0x00000000
+  eip  0x00800633
+  cs   0x----001b
+  flag 0x00000086
+  esp  0xeebfdf88
+  ss   0x----0023
 Welcome to the MIT6.828-JOS kernel monitor!
 Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 17343
+TRAP frame at 0xf02af000 from CPU 0
+  edi  0x00000000
+  esi  0x00801613
+  ebp  0xeebfdf90
+  oesp 0xefffffdc
+  ebx  0xeebfdfa4
+  edx  0xeebfde48
+  ecx  0x00000001
+  eax  0x00000001
+  es   0x----0023
+  ds   0x----0023
+  trap 0x00000003 Breakpoint
+  err  0x00000000
+  eip  0x00800633
+  cs   0x----001b
+  flag 0x00000086
+  esp  0xeebfdf88
+  ss   0x----0023
+qemu: terminating on signal 15 from pid 27044

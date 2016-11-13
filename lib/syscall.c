@@ -42,6 +42,10 @@ int sys_env_destroy(envid_t envid){
 
 // LAB 4
 
+void sys_yield(void){
+	syscall(SYS_yield, 0, 0, 0, 0, 0, 0);
+}
+
 int sys_page_alloc(envid_t envid, void *va, int perm){
 	return syscall(SYS_page_alloc, 1, envid, (uint32_t) va, perm, 0, 0);
 }
