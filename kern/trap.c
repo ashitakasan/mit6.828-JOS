@@ -270,10 +270,58 @@ void page_fault_handler(struct Trapframe * tf){
 		panic("kernel page fault va %08x", fault_va);
 	}
 
+	// 我们已经处理了内核模式异常，所以如果执行到这里，页面错误发生在用户模式；
+	// 如果存在环境的页面错误 upcall 则调用，
+	// 在用户异常堆栈 (低于 UXSTACKTOP) 上设置页错误堆栈帧，然后分支到 curenv->env_pgfault_upcall；
+	// 页面错误 upcall 可能导致另一个页面错误，在这种情况下，
+	// 我们向上递归到页面错误，在用户异常堆栈顶部推送另一个页面错误堆栈帧；
+	// 
+	// 陷阱处理程序需要在陷阱时间栈顶部有一个字的临时空格才能返回；
+	// 在非递归的情况下，我们不必担心这一点，因为常规用户堆栈的顶部是空闲的；
+	// 在递归的情况下，这意味着我们必须在异常堆栈的当前顶部和新的堆栈帧之间留下一个额外的字，
+	// 因为异常堆栈是 trap-time 堆栈；
+	// 
+	// 如果没有页面错误 upcall，或者环境没有为其异常堆栈分配页面，
+	// 或者不能写入它，或者异常堆栈溢出，需要破坏导致故障的环境；
+	// 注意，grade 脚本假定您将首先检查页面故障 upcall，如果没有则打印如下的 '用户故障va' 消息；
+	// 剩余的三个检查可以组合成单个测试
+	// 
+	// user_mem_assert() 和 env_run() 比较有用
+	// 要更改用户环境运行，请修改 curenv-> env_tf ('tf'变量指向'curenv->env_tf')
 	// LAB 4
+
+	if(curenv->env_pgfault_upcall == NULL)
+		goto user_fault;
+
+	uintptr_t new_stack;
+	struct UTrapframe *utf;
+
+	if(tf->tf_esp >= UXSTACKTOP - PGSIZE && tf->tf_esp <= UXSTACKTOP - 1)
+		new_stack = tf->tf_esp - 4;
+	else
+		new_stack = UXSTACKTOP;
+
+	// check space for utf, in recursive case
+	if(new_stack - sizeof(struct UTrapframe) < UXSTACKTOP - PGSIZE)
+		goto user_fault;
+
+	utf = (struct UTrapframe *)(new_stack - sizeof(struct UTrapframe));
+	utf->utf_fault_va = fault_va;
+	utf->utf_err = tf->tf_err;
+	utf->utf_regs = tf->tf_regs;
+	utf->utf_eip = tf->tf_eip;
+	utf->utf_eflags = tf->tf_eflags;
+	utf->utf_esp = tf->tf_esp;
+
+	tf->tf_esp = (uintptr_t)utf;
+	tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
+
+	env_run(curenv);
 
 	// 我们已经处理了内核模式异常，所以如果我们到达这里，页面错误发生在用户模式
 	// 销毁导致故障的环境
+
+user_fault:
 	cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
 	print_trapframe(tf);
 	env_destroy(curenv);

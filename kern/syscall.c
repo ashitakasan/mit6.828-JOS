@@ -109,11 +109,21 @@ static int sys_env_set_status(envid_t envid, int status){
 }
 
 /*
-  
+  通过修改 envid 对应的 struct Env 的 env_pgfault_upcall 字段来设置页面错误 upcall
+  当 envid 导致页面错误时，内核将故障记录推送到异常堆栈，然后分支到 func
+  成功返回 0，错误返回小于 0：
+  	-E_BAD_ENV，如果环境 envid 当前不存在，或者调用者没有更改 envid 的权限
  */
 static int sys_env_set_pgfault_upcall(envid_t envid, void *func){
+	// LAB 4
+	
+	struct Env *e;
+	int ret;
+	if((ret = envid2env(envid, &e, 1)) < 0)
+		return ret;
 
-	panic("sys_env_set_pgfault_upcall not implemented");
+	e->env_pgfault_upcall = func;
+	return 0;
 }
 
 /*
