@@ -306,7 +306,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
 	if(!(*pde & PTE_P) && create == false)
 		return NULL;
 	else if(!(*pde & PTE_P) && create){				// 如果目录项不存在则创建
-		struct PageInfo *pi = page_alloc(1);			// 分配一页
+		struct PageInfo *pi = page_alloc(ALLOC_ZERO);	// 分配一页
 		if(pi == NULL)
 			return NULL;
 		pi->pp_ref++;
