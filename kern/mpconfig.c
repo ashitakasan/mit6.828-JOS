@@ -80,7 +80,7 @@ static uint8_t sum(void *addr, int len){
 static struct mp *mpsearch1(physaddr_t a, int len){
 	struct mp *mp = KADDR(a), *end = KADDR(a + len);
 	for(; mp < end; mp++){
-		if(memcpy(mp->signature, "_MP_", 4) == 0 && sum(mp, sizeof(*mp)) == 0)
+		if(memcmp(mp->signature, "_MP_", 4) == 0 && sum(mp, sizeof(*mp)) == 0)
 			return mp;
 	}
 	return NULL;

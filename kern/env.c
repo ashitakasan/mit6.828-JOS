@@ -210,7 +210,8 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id){
 
 	// 在用户模式下启用中断
 	// LAB 4
-	
+
+	e->env_tf.tf_eflags |= FL_IF;
 
 	// 清除页面错误处理程序，直到用户安装一个
 	e->env_pgfault_upcall = 0;
@@ -373,7 +374,7 @@ void env_destroy(struct Env *e){
 	// 僵尸环境将在下次陷入内核时释放
 	if(e->env_status == ENV_RUNNING && curenv != e){
 		e->env_status = ENV_DYING;
-		return;
+		return;						// 如果在这里返回，run-spin 将失败，但在多 CPU 环境下这里必须返回
 	}
 
 	env_free(e);

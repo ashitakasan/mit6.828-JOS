@@ -59,6 +59,9 @@ void lapic_init(void){
 	// lapices是 LAPIC 的 4K MMIO区域的物理地址，将其映射到虚拟内存中，以便我们可以访问它
 	lapic = mmio_map_region(lapicaddr, 4096);
 
+	// 启用本地APIC; 设置杂散中断向量
+	lapicw(SVR, ENABLE | (IRQ_OFFSET + IRQ_SPURIOUS));
+
 	// 定时器从 lapic[TICR] 总线频率重复递减计数，然后发出中断
 	// 如果我们更多地关心精确计时，则使用外部时间源来校准TICR
 	lapicw(TDCR, X1);
@@ -77,6 +80,9 @@ void lapic_init(void){
 	// 在提供该中断条目的机器上禁用性能计数器溢出中断
 	if(((lapic[VER] >> 16) & 0xFF) >= 4)
 		lapicw(PCINT, MASKED);
+
+	// 将错误中断映射到 IRQ_ERROR
+	lapicw(ERROR, IRQ_OFFSET + IRQ_ERROR);
 
 	// 清除错误状态寄存器
 	lapicw(ESR, 0);

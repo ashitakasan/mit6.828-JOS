@@ -59,6 +59,10 @@ static const char *trapname(int trapno){
 		return excnames[trapno];
 	if(trapno == T_SYSCALL)
 		return "System call";
+	if(trapno == IRQ_OFFSET)
+		return "Clock Interrupt";
+	if(trapno >= IRQ_OFFSET && trapno < IRQ_OFFSET + 16)
+		return "Hardware Interrupt";
 	return "(unknown trap)";
 }
 
@@ -189,8 +193,21 @@ static void trap_dispatch(struct Trapframe *tf){
 			return;
 	}
 
-	// 处理时钟中断；不要忘记在调用调度程序之前使用 lapic_eoi() 确认中断
+	// 处理伪中断硬件有时会由于IRQ线路上的噪声或其他原因而引起这些中断
+	if(tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS){
+		cprintf("Spurious interrupt on irq 7\n");
+		print_trapframe(tf);
+		return;
+	}
+
+	// 处理定时器中断；不要忘记在调用调度程序之前使用 lapic_eoi() 确认中断
 	// LAB 4
+
+	if(tf->tf_trapno == IRQ_OFFSET || tf->tf_trapno == IRQ_OFFSET + 1){
+		cprintf("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT Clock Interrupt\n");
+		lapic_eoi();
+		sched_yield();
+	}
 
 	// 意外陷阱：用户进程或内核有错误
 	print_trapframe(tf);
