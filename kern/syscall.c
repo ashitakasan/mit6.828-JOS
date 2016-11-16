@@ -82,7 +82,7 @@ static envid_t sys_exofork(void){
 	
 	e->env_status = ENV_NOT_RUNNABLE;
 	e->env_tf = curenv->env_tf;
-	e->env_tf.tf_regs.reg_eax = 0;
+	e->env_tf.tf_regs.reg_eax = 0;			// 子进程将从这里运行，返回 0
 	return e->env_id;
 }
 
@@ -121,6 +121,10 @@ static int sys_env_set_pgfault_upcall(envid_t envid, void *func){
 	int ret;
 	if((ret = envid2env(envid, &e, 1)) < 0)
 		return ret;
+
+	if(!func)
+		return -E_INVAL;
+	user_mem_assert(e, func, 4, PTE_U);
 
 	e->env_pgfault_upcall = func;
 	return 0;
@@ -193,15 +197,21 @@ static int sys_page_map(envid_t srcenvid, void *srcva, envid_t dstenvid, void *d
 		return ret;
 
 	if((uint32_t)srcva >= UTOP || ((uint32_t)srcva % PGSIZE) != 0 || 
-		(uint32_t)dstva >= UTOP || ((uint32_t)dstva % PGSIZE) != 0)
+		(uint32_t)dstva >= UTOP || ((uint32_t)dstva % PGSIZE) != 0){
+		cprintf("sys_page_map: invalid boundary or page-aligned\n");
 		return -E_INVAL;
+	}
 
 	if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || 
-		(perm & ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) != 0)		// 第一次检查 perm
+		(perm & ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) != 0){	// 第一次检查 perm
+		cprintf("sys_page_map: invalid perm\n");
 		return -E_INVAL;
+	}
 
-	if((pp = page_lookup(srce->env_pgdir, srcva, &pte)) == 0)
+	if((pp = page_lookup(srce->env_pgdir, srcva, &pte)) == 0){
+		cprintf("sys_page_map: page not found\n");
 		return -E_INVAL;
+	}
 
 	if(((*pte & PTE_W) == 0) && (perm & PTE_W))					// 第二次检查 perm
 		return -E_INVAL;

@@ -6,45 +6,29 @@ check_page_alloc() succeeded!
 boot_map_region va = 0xef800000, size = 2*4096, pa = 0x0
 boot_map_region va = 0xef802000, size = 1*4096, pa = 0x0
 check_page() succeeded!
-boot_map_region va = 0xef000000, size = 64*4096, pa = 0x26f000
-boot_map_region va = 0xeec00000, size = 31*4096, pa = 0x2af000
+boot_map_region va = 0xef000000, size = 64*4096, pa = 0x274000
+boot_map_region va = 0xeec00000, size = 31*4096, pa = 0x2b4000
 boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x116000
 boot_map_region va = 0xf0000000, size = 65535*4096, pa = 0x0
 mem_init_mp for 8 CPUs' kernel stack
-boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x22d000
-boot_map_region va = 0xeffe8000, size = 8*4096, pa = 0x235000
-boot_map_region va = 0xeffd8000, size = 8*4096, pa = 0x23d000
-boot_map_region va = 0xeffc8000, size = 8*4096, pa = 0x245000
-boot_map_region va = 0xeffb8000, size = 8*4096, pa = 0x24d000
-boot_map_region va = 0xeffa8000, size = 8*4096, pa = 0x255000
-boot_map_region va = 0xeff98000, size = 8*4096, pa = 0x25d000
-boot_map_region va = 0xeff88000, size = 8*4096, pa = 0x265000
+boot_map_region va = 0xefff8000, size = 8*4096, pa = 0x232000
+boot_map_region va = 0xeffe8000, size = 8*4096, pa = 0x23a000
+boot_map_region va = 0xeffd8000, size = 8*4096, pa = 0x242000
+boot_map_region va = 0xeffc8000, size = 8*4096, pa = 0x24a000
+boot_map_region va = 0xeffb8000, size = 8*4096, pa = 0x252000
+boot_map_region va = 0xeffa8000, size = 8*4096, pa = 0x25a000
+boot_map_region va = 0xeff98000, size = 8*4096, pa = 0x262000
+boot_map_region va = 0xeff88000, size = 8*4096, pa = 0x26a000
 check_kern_pgdir() succeeded!
 check_page_installed_pgdir() succeeded!
 enabled interrupts: 1 2
 [00000000] new env 00001000
-ELF load: region_alloc env[00001000] at va = 00200000 with len = 18351
-ELF load: region_alloc env[00001000] at va = 00800020 with len = 4894
+ELF load: region_alloc env[00001000] at va = 00200000 with len = 19963
+ELF load: region_alloc env[00001000] at va = 00800020 with len = 6622
 ELF load: region_alloc env[00001000] at va = 00802000 with len = 12
 ELF load: region_alloc env[00001000] at va = eebfd000 with len = 4096
-TRAP frame at 0xefffff3c from CPU 0
-  edi  0xf02af044
-  esi  0x00000000
-  ebp  0xefffff90
-  oesp 0xefffff5c
-  ebx  0xf02af000
-  edx  0xeebfffcc
-  ecx  0x00000000
-  eax  0xeebfdfb8
-  es   0x----0010
-  ds   0x----0010
-  trap 0x0000000e Page Fault
-  cr2  0xeebfffcc
-  err  0x00000002 [kernel, write, not-present]
-  eip  0xf0103b3a
-  cs   0x----0008
-  flag 0x00000092
-kernel panic on CPU 0 at kern/trap.c:270: kernel page fault va eebfffcc
-Welcome to the MIT6.828-JOS kernel monitor!
-Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 28454
+I am the parent.  Forking the child...
+[00001000] new env 00001001
+I am the parent.  Running the child...
+I am the child.  Spinning...
+qemu: terminating on signal 2

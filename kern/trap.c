@@ -293,6 +293,8 @@ void page_fault_handler(struct Trapframe * tf){
 	if(curenv->env_pgfault_upcall == NULL)
 		goto user_fault;
 
+	user_mem_assert(curenv, (void *)(UXSTACKTOP - 4), 4, PTE_U);
+
 	uintptr_t new_stack;
 	struct UTrapframe *utf;
 
