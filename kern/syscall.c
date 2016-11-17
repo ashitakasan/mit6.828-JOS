@@ -235,7 +235,7 @@ static int sys_page_unmap(envid_t envid, void *va){
 	struct Env *e;
 	int ret;
 
-	if((ret = envid2env(envid, &e, 1)) < 1)
+	if((ret = envid2env(envid, &e, 1)) < 0)
 		return ret;
 
 	if((uint32_t)va >= UTOP || ((uint32_t)va % PGSIZE) != 0)
@@ -246,19 +246,96 @@ static int sys_page_unmap(envid_t envid, void *va){
 }
 
 /*
-  
+  尝试发送 valua 到目标 env envid
+  如果 srcva < UTOP，则还发送当前映射到 srcva 的页面，以便接收者获得同一页面的重复映射；
+  如果目标未被阻塞等待IPC，则发送失败，返回值为 -E_IPC_NOT_RECV；
+  发送也可能由于下面列出的其他原因失败
+
+  否则，发送成功，目标的 ipc 字段将更新如下：
+	env_ipc_recving 设置为 0 以阻止将来的发送
+	env_ipc_from 设置为发送 envid
+	env_ipc_value 设置为 value 参数
+	如果页面被传输，env_ipc_perm 设置为 perm ，否则为 0
+  目标环境再次标记为可运行，从暂停的 sys_ipc_recv 系统调用返回 0 (提示：sys_ipc_recv 函数是否返回?)
+
+  如果发送方想要发送页面但接收方不接受，则不传送页面映射，但不发生错误
+  ipc只在没有错误时发生
+  成功返回 0，错误返回小于 0：
+  	-E_BAD_ENV，如果环境envid当前不存在 (无需检查权限)
+  	-E_IPC_NOT_RECV，如果 envid 当前未在 sys_ipc_recv 中阻塞，或另一个环境管理先发送
+	-E_INVAL，如果 srcva < UTOP 但是 srcva 没有页面对齐
+	-E_INVAL，如果 srcva < UTOP 但是权限不合适 (参考 sys_page_alloc)
+	-E_INVAL，如果 srcva < UTOP 但是 srcva 没有在调用者的地址空间中映射
+	-E_INVAL，如果 (perm & PTE_W)，但是 srcva 在当前环境的地址空间中是只读的
+	-E_NO_MEM，如果 如果没有足够的内存来映射 srcva 在 envid 的地址空间
  */
 static int sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm){
+	// LAB 4
+	
+	struct Env *e;
+	int ret;
 
-	panic("sys_ipc_try_send not implemented");
+	if((ret = envid2env(envid, &e, 0)) < 0)
+		return ret;
+
+	if(e->env_ipc_recving == 0)
+		return -E_IPC_NOT_RECV;
+
+	if((uint32_t)srcva < UTOP && (uint32_t)e->env_ipc_dstva < UTOP){
+		if(((uint32_t)srcva % PGSIZE) != 0)
+			return -E_INVAL;
+
+		// PTE_U | PTE_P must be set, PTE_AVAIL | PTE_W  may not be set, no other bits set
+		if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || 
+			(perm & ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) != 0)
+			return -E_INVAL;
+		
+		pte_t *pte;
+		struct PageInfo *pp;
+
+		if((pp = page_lookup(curenv->env_pgdir, srcva, &pte)) == 0)
+			return -E_INVAL;
+
+		if((perm & PTE_W) && ((*pte & PTE_W) == 0))
+			return -E_INVAL;
+
+		if((ret = page_insert(e->env_pgdir, pp, e->env_ipc_dstva, perm)) < 0)
+			return ret;
+	}
+
+	// check complete, now transfer
+	e->env_ipc_recving = 0;
+	e->env_ipc_from = curenv->env_id;
+	e->env_ipc_value = value;
+	e->env_ipc_perm = perm;
+
+	e->env_status = ENV_RUNNABLE;
+	return 0;
 }
 
 /*
-  
+  阻塞直到 value 准备就绪。使用 struct Env 的 env_ipc_recving 和 env_ipc_dstva 
+  字段来接收您想要接收的记录，标记自己不可运行，然后放弃 CPU；
+  如果 dstva < UTOP，那么你会接收一个数据页面，'dstva' 是发送的页面应该映射的虚拟地址；
+  此函数仅在错误时返回，但系统调用 syscall 最终将在成功时返回 0
+  错误返回小于 0：-E_INVAL 如果 dstva < UTOP 但是 dstva 没有页面对齐
  */
 static int sys_ipc_recv(void *dstva){
+	// LAB 4
+	if((uint32_t)dstva < UTOP){
+		if(((uint32_t)dstva % PGSIZE) != 0)
+			return -E_INVAL;
+	}
 
-	panic("sys_ipc_recv not implemented");
+	curenv->env_ipc_value = 0;
+	curenv->env_ipc_perm = 0;
+	curenv->env_ipc_from = 0;
+
+	curenv->env_ipc_dstva = dstva;
+	curenv->env_ipc_recving = 1;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+
+	// sched_yield();
 	return 0;
 }
 
@@ -293,6 +370,10 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint3
 			return sys_page_map((envid_t)a1, (void *)a2, (envid_t)a3, (void *)a4, a5);
 		case SYS_page_unmap:
 			return sys_page_unmap((envid_t)a1, (void *)a2);
+		case SYS_ipc_try_send:
+			return sys_ipc_try_send((envid_t)a1, a2, (void *)a3, (unsigned)a4);
+		case SYS_ipc_recv:
+			return sys_ipc_recv((void *)a1);
 		default:
 			return -E_INVAL;
 	}

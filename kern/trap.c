@@ -204,7 +204,7 @@ static void trap_dispatch(struct Trapframe *tf){
 	// LAB 4
 
 	if(tf->tf_trapno == IRQ_OFFSET || tf->tf_trapno == IRQ_OFFSET + 1){
-		cprintf("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT Clock Interrupt\n");
+		// cprintf("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT Clock Interrupt\n");
 		lapic_eoi();
 		sched_yield();
 	}

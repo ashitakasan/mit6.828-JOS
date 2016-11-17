@@ -128,7 +128,7 @@ def test_spin():
             "I am the child.  Spinning...",
             "I am the parent.  Killing the child...",
             E(".$E1. destroying $E2"),
-            E(".$E1. free env $E2"),
+            E(".$E1|$E2. free env $E2"),
             E(".$E1. exiting gracefully"),
             E(".$E1. free env $E1"))
 
