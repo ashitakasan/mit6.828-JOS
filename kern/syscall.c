@@ -47,6 +47,7 @@ static int sys_env_destroy(envid_t envid){
 
 	if((r = envid2env(envid, &e, 1)) < 0)
 		return r;
+
 	if(e == curenv)
 		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
 	else

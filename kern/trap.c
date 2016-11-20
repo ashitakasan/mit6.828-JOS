@@ -209,6 +209,9 @@ static void trap_dispatch(struct Trapframe *tf){
 		sched_yield();
 	}
 
+	// 处理键盘和串行中断
+	// LAB 5
+
 	// 意外陷阱：用户进程或内核有错误
 	print_trapframe(tf);
 	if(tf->tf_cs == GD_KT)
