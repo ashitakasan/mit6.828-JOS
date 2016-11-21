@@ -70,7 +70,8 @@ void i386_init(void){
 	// 不要直接用这里 - 通过分级脚本使用
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
-	ENV_CREATE(user_yield, ENV_TYPE_USER);
+	for(; i < 1; i++)
+		ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif
 	
 	sched_yield();
