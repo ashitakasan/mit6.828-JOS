@@ -13,6 +13,15 @@ enum {
 	E_FAULT,				// 内存错误
 	E_IPC_NOT_RECV,		// 尝试发送到 env 没有接收
 	E_EOF,				// 文件意外结束
+
+	E_NO_DISK,			// 磁盘没有剩余空间
+	E_MAX_OPEN,			// 打开太多文件
+	E_NOT_FOUND, 		// 文件或块没有找到
+	E_BAD_PATH,			// 错误路径
+	E_FILE_EXISTS,		// 文件已经存在
+	E_NOT_EXEC,			// 文件不是有效的可执行文件
+	E_NOT_SUPP,			// 不支持的操作
+
 	MAXERROR
 };
 

@@ -36,6 +36,7 @@ enum {
 // 特殊环境类型
 enum EnvType {
 	ENV_TYPE_USER = 0,
+	ENV_TYPE_FS,					// 文件系统服务器
 };
 
 // 保存系统运行环境，内核通过该结构体来跟踪 系统每个用户运行环境

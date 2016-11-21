@@ -66,6 +66,9 @@ void i386_init(void){
 	// 启动非引导CPU
 	boot_aps();
 
+	// 启动 fs
+	// ENV_CREATE(fs_fs, ENV_TYPE_FS);
+
 #if defined(TEST)
 	// 不要直接用这里 - 通过分级脚本使用
 	ENV_CREATE(TEST, ENV_TYPE_USER);
@@ -73,6 +76,9 @@ void i386_init(void){
 	for(; i < 1; i++)
 		ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif
+
+	// 不应该是必要的 - 初始化键盘，因为中断已放弃
+	kbd_intr();
 	
 	sched_yield();
 

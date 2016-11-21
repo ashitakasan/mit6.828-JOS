@@ -9,6 +9,7 @@ enum {
 	SYS_yield,
 	SYS_exofork,
 	SYS_env_set_status,
+	SYS_env_set_trapframe,
 	SYS_env_set_pgfault_upcall,
 	SYS_page_alloc,
 	SYS_page_map,

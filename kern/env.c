@@ -223,7 +223,7 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id){
 	env_free_list = e->env_link;
 	*newenv_store = e;
 
-	cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+	// cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
 	return 0;
 }
 
@@ -310,6 +310,9 @@ static void load_icode(struct Env *e, uint8_t *binary){
   包括设置 env 结构的各个字段、内存空间、加载程序文件，env_status 设置为 ENV_RUNNABLE 等
  */
 void env_create(uint8_t *binary, enum EnvType type){
+	// 如果这是文件系统 (type == ENV_TYPE_FS)，给他提供 I/O 权限
+	// LAB 5
+	
 	struct Env *env;
 	int r = env_alloc(&env, 0);
 	if(r < 0){
@@ -333,7 +336,7 @@ void env_free(struct Env *e){
 	if(e == curenv)
 		lcr3(PADDR(kern_pgdir));
 
-	cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+	// cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
 
 	// 清空地址空间的用户部分（UTOP以下）的所有映射页面
 	static_assert(UTOP % PTSIZE == 0);

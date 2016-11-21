@@ -110,6 +110,19 @@ static int sys_env_set_status(envid_t envid, int status){
 }
 
 /*
+  将envid的 Trapframe 设置为 tf
+  修改tf以确保用户环境始终在启用中断的代码保护级别3 (CPL 3) 下运行
+  成功返回 0，错误返回小于 0：
+  	-E_BAD_ENV，如果环境envid当前不存在，或者调用者没有更改envid的权限
+ */
+static int sys_env_set_trapframe(envid_t envid, struct Trapframe *tf){
+	// 记住要检查用户是否为我们提供了一个好的地址
+	// LAB 5
+	
+	panic("sys_env_set_trapframe not implemented");
+}
+
+/*
   通过修改 envid 对应的 struct Env 的 env_pgfault_upcall 字段来设置页面错误 upcall
   当 envid 导致页面错误时，内核将故障记录推送到异常堆栈，然后分支到 func
   成功返回 0，错误返回小于 0：
