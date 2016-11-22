@@ -175,8 +175,10 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id){
 	int r;
 	struct Env *e;
 
-	if(!(e = env_free_list))
+	if(!(e = env_free_list)){
+		cprintf("No free environments exists now !\n");
 		return -E_NO_FREE_ENV;
+	}
 
 	// 分配并设置此环境的页目录
 	if((r = env_setup_vm(e)) < 0)
@@ -322,6 +324,10 @@ void env_create(uint8_t *binary, enum EnvType type){
 
 	load_icode(env, binary);
 	env->env_type = type;
+
+	if(type == ENV_TYPE_FS){
+		env->env_tf.tf_eflags |= FL_IOPL_MASK;
+	}
 }
 
 /*
