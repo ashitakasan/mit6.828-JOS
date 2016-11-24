@@ -31,7 +31,7 @@ typedef uint32_t ppn_t;
 // size_t 用来表示内存对象大小
 typedef uint32_t size_t;
 
-// ssize_t 是有符号版本的 ssize_t，用来表示函数的错误返回值
+// ssize_t 是有符号版本的 size_t，用来表示函数的错误返回值
 typedef int32_t ssize_t;
 
 // off_t 表示文件的偏移量和大小
