@@ -31,14 +31,14 @@ struct File {
 	uint32_t f_direct[NDIRECT];	// 直接块
 	uint32_t f_indirect;			// 间接块
 
-	// 填充到256字节; 必须进行算术以防我们在64位机器上编译fsformat
+	// 填充到256字节; 必须进行算术以防我们在64位机器上编译 fsformat
 	uint8_t f_pad[256 - MAXNAMELEN - 8 - 4 * NDIRECT - 4];
 }__attribute__((packed));			// 仅在某些64位计算机上需要
 
 // 一个 inode 块正好包含 BLKFILES 个 struct File，即这么多的文件数
 #define BLKFILES			(BLKSIZE / sizeof(struct File))
 
-#define FTYPE_REG		0		// 常规温佳妮
+#define FTYPE_REG		0		// 常规文件
 #define FTYPE_DIR		1		// 目录
 
 // 文件系统超级块（内存中和磁盘上）

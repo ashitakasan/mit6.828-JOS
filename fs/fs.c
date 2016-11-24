@@ -119,13 +119,50 @@ void fs_init(void){
   该槽将是 f->f_direct[] 条目之一，或间接块中的条目
   当设置 'alloc' 时，如果需要，该函数将分配一个间接块
   成功返回 0 (注意 *ppdiskbno 可能为 0)，错误返回小于 0：
-  	-E_NOT_FOUND，如果该函数需要分配一个间接块，但alloc是0
+  	-E_NOT_FOUND，如果该函数需要分配一个间接块，但 alloc 是 0
   	-E_NO_DISK，如果磁盘上没有间接块的空间
   	-E_INVAL，如果 filebno 超出范围 (>= NDIRECT + NINDIRECT)
  */
 static int file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc){
 	// LAB 5
-	panic("file_block_walk not implemented");
+
+	int r = -1;
+	uint32_t *addr;
+	uint32_t diskbno;
+	if(ppdiskbno == 0)
+		return -1;
+
+	if(filebno < NDIRECT){
+		if((diskbno = f->f_direct[filebno]) == 0){
+			if(!alloc || (r = alloc_block()) < 0)
+				return r;
+			f->f_direct[filebno] = (uint32_t)r;
+			flush_block(f);
+		}
+		*ppdiskbno = &f->f_direct[filebno];
+		return 0;
+	}
+
+	filebno -= NDIRECT;
+	if(filebno < NINDIRECT){
+		if((diskbno = f->f_direct[NDIRECT]) == 0){
+			if(!alloc || (r = alloc_block()) < 0)
+				return r;
+			diskbno = (uint32_t)r;
+			f->f_direct[NDIRECT] = (uint32_t)r;
+			flush_block(f);
+		}
+		addr = (uint32_t *)diskaddr(diskbno);
+		if((addr[filebno]) == 0){
+			if(!alloc || (r = alloc_block()) < 0)
+				return r;
+			addr[filebno] = (uint32_t)r;
+			*ppdiskbno = &addr[filebno];
+			flush_block(addr);
+			return 0;
+		}
+	}
+	return -E_INVAL;
 }
 
 /*
@@ -136,7 +173,15 @@ static int file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbn
  */
 int file_get_block(struct File *f, uint32_t filebno, char **blk){
 	// LAB 5
-	panic("file_get_block not implemented");
+	
+	int r;
+	uint32_t *ppdiskbno;
+
+	if((r = file_block_walk(f, filebno, &ppdiskbno, 1)) < 0)
+		return r;
+
+	*blk = (char *)diskaddr(*ppdiskbno);
+	return 0;
 }
 
 /*
@@ -183,7 +228,7 @@ static int dir_alloc_file(struct File *dir, struct File **file){
 			return r;
 		f = (struct File *)blk;
 		for(j = 0; j < BLKFILES; j++){
-			if(f[j].f_name[0] == '\0'){				// 被删除的文件位置
+			if(f[j].f_name[0] == '\0'){				// 被删除或空的文件位置
 				*file = &f[j];
 				return 0;
 			}
