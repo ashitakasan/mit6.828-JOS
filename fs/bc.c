@@ -82,7 +82,7 @@ void flush_block(void *addr){
 	if((r = ide_write(blockno * BLKSECTS, align_addr, BLKSECTS)) < 0)
 		panic("fs flush_block ide_write error: %e", r);
 
-	if((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+	if((r = sys_page_map(0, align_addr, 0, align_addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("fs flush_block, sys_page_map error: %e", r);
 }
 

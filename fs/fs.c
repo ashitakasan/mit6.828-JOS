@@ -157,10 +157,10 @@ static int file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbn
 			if(!alloc || (r = alloc_block()) < 0)
 				return r;
 			addr[filebno] = (uint32_t)r;
-			*ppdiskbno = &addr[filebno];
-			flush_block(addr);
-			return 0;
 		}
+		*ppdiskbno = &addr[filebno];
+		flush_block(addr);
+		return 0;
 	}
 	return -E_INVAL;
 }

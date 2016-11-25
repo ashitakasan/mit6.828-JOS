@@ -230,7 +230,7 @@ int serve_write(envid_t envid, struct Fsreq_write *req){
 	}
 
 	nbytes = MIN(req->req_n, PGSIZE - (sizeof(int) + sizeof(size_t)));
-	nbytes = file_write(o->o_file, req->req_buf, nbytes, o->o_fd->fd_offset);
+	nbytes = file_write(o->o_file, (void *)req->req_buf, nbytes, o->o_fd->fd_offset);
 
 	if(nbytes > 0)
 		o->o_fd->fd_offset += nbytes;
