@@ -240,5 +240,23 @@ static int map_segment(envid_t envid, uintptr_t va, size_t memsz,
  */
 static int copy_shared_pages(envid_t envid){
 	// LAB 5
+	
+	int i, j, pn, r;
+	void *va;
+
+	for(i = 0; i <= PDX(USTACKTOP); i++){
+		if(!(uvpd[i] & PTE_P))
+			continue;
+		for(j = 0; j < NPTENTRIES; j++){
+			pn = i * NPTENTRIES + j;
+			if(pn >= PGNUM(UXSTACKTOP - PGSIZE))
+				break;
+			if(uvpt[pn] & PTE_SHARE){
+				va = (void *)(pn * PGSIZE);
+				if((r = sys_page_map(0, va, envid, va, PGOFF(uvpt[pn]) & PTE_SYSCALL)) < 0)
+					panic("sys_page_map: error %e\n", r);
+			}
+		}
+	}
 	return 0;
 }
