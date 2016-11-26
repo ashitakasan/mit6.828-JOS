@@ -1,7 +1,7 @@
 #include <inc/stdio.h>
 #include <inc/error.h>
 
-#define	BUFLEN	1024
+#define	BUFLEN		1024
 
 static char buf[BUFLEN];
 
@@ -9,8 +9,13 @@ static char buf[BUFLEN];
 char* readline(const char *prompt){
 	int i, c, echoing;
 
+#if JOS_KERNEL
 	if(prompt != NULL)
 		cprintf("%s", prompt);
+#else
+	if(prompt != NULL)
+		fprintf(1, "%s\n", prompt);
+#endif
 
 	i = 0;
 	echoing = iscons(0);
@@ -18,7 +23,8 @@ char* readline(const char *prompt){
 	while(1){
 		c = getchar();						// 读入一个字符
 		if(c < 0){
-			cprintf("read error: %e\n", c);
+			if(c != -E_EOF)
+				cprintf("read error: %e\n", c);
 			return NULL;
 		}
 		else if((c == '\b' || c == '\x7f') && i > 0){	// 退格和删除

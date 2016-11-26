@@ -111,15 +111,25 @@ static int sys_env_set_status(envid_t envid, int status){
 
 /*
   将envid的 Trapframe 设置为 tf
-  修改tf以确保用户环境始终在启用中断的代码保护级别3 (CPL 3) 下运行
+  修改 tf 以确保用户环境始终在启用中断的代码保护级别 3 (CPL 3) 下运行
   成功返回 0，错误返回小于 0：
-  	-E_BAD_ENV，如果环境envid当前不存在，或者调用者没有更改envid的权限
+  	-E_BAD_ENV，如果环境 envid 当前不存在，或者调用者没有更改 envid 的权限
  */
 static int sys_env_set_trapframe(envid_t envid, struct Trapframe *tf){
 	// 记住要检查用户是否为我们提供了一个好的地址
 	// LAB 5
 	
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *e;
+	int ret;
+	if((ret = envid2env(envid, &e, 1)) < 0)
+		return ret;
+
+	if(tf->tf_eip >= UTOP)
+		return -1;
+
+	e->env_tf = *tf;
+	e->env_tf.tf_eflags |= FL_IF;
+	return 0;
 }
 
 /*
@@ -376,6 +386,8 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint3
 			return sys_exofork();
 		case SYS_env_set_status:
 			return sys_env_set_status((envid_t)a1, a2);
+		case SYS_env_set_trapframe:
+			return sys_env_set_trapframe((envid_t)a1, (struct Trapframe *)a2);
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
 		case SYS_page_alloc:
