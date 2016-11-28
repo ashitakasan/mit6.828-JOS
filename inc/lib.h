@@ -18,7 +18,7 @@
 #include <inc/fd.h>
 #include <inc/args.h>
 
-#define USERD(x)			(void)(x)
+#define USED(x)			(void)(x)
 
 // 主要的用户程序
 void umain(int argc, char **argv);

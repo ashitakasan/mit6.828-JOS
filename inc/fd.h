@@ -13,7 +13,7 @@ struct Dev {
 	const char *dev_name;
 	ssize_t (*dev_read)(struct Fd *fd, void *buf, size_t len);
 	ssize_t (*dev_write)(struct Fd *fd, const void *buf, size_t len);
-	int (*dev_close)(struct Fd *fd, struct Stat *stat);
+	int (*dev_close)(struct Fd *fd);
 	int (*dev_stat)(struct Fd *fd, struct Stat *stat);
 	int (*dev_trunc)(struct Fd *fd, off_t length);
 };
@@ -46,7 +46,7 @@ int fd_lookup(int fdnum, struct Fd **fd_store);
 int dev_lookup(int envid, struct Dev **fd_store);
 
 extern struct Dev devfile;
-extern struct Dev dencons;
+extern struct Dev devcons;
 extern struct Dev devpipe;
 
 #endif	// not JOS_INC_FD_H

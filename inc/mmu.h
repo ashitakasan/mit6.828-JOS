@@ -61,7 +61,8 @@
 #define PTE_PS		0x080	// 页大小
 #define PTE_G		0x100	// 全局页
 
-// PTE_AVAIL位不用于内核或硬件中断，因此，用户进程允许任意设置它们
+// PTE_AVAIL 位不用于内核或硬件中断，因此，用户进程允许任意设置它们
+// 一共三个用户程序可用的比特位， PTE_COW | PTW_SHARE
 #define	PTE_AVAIL	0xE00	// 可用于软件的使用
 
 // 标志 PTE_SYSCALL 可用于系统调用

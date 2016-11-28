@@ -48,10 +48,10 @@ static int sys_env_destroy(envid_t envid){
 	if((r = envid2env(envid, &e, 1)) < 0)
 		return r;
 
-	if(e == curenv)
-		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
-	else
-		cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
+	// if(e == curenv)
+	// 	cprintf("[%08x] exiting gracefully\n", curenv->env_id);
+	// else
+	// 	cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
 
 	env_destroy(e);
 	return 0;
@@ -179,8 +179,8 @@ static int sys_page_alloc(envid_t envid, void *va, int perm){
 
 	if((uint32_t)va >= UTOP || ((uint32_t)va % PGSIZE) != 0)	// 检查 va
 		return -E_INVAL;
-	if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || 
-		(perm & ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) != 0)		// 检查 perm
+	
+	if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || (perm & ~PTE_SYSCALL) != 0)		// 检查 perm
 		return -E_INVAL;
 
 	if((pp = page_alloc(ALLOC_ZERO)) == 0)
@@ -226,8 +226,7 @@ static int sys_page_map(envid_t srcenvid, void *srcva, envid_t dstenvid, void *d
 		return -E_INVAL;
 	}
 
-	if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || 
-		(perm & ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) != 0){	// 第一次检查 perm
+	if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || (perm & ~PTE_SYSCALL) != 0){	// 第一次检查 perm
 		cprintf("sys_page_map: invalid perm\n");
 		return -E_INVAL;
 	}
@@ -310,8 +309,7 @@ static int sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned
 			return -E_INVAL;
 
 		// PTE_U | PTE_P must be set, PTE_AVAIL | PTE_W  may not be set, no other bits set
-		if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || 
-			(perm & ~(PTE_U | PTE_P | PTE_AVAIL | PTE_W)) != 0)
+		if((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P) || (perm & ~PTE_SYSCALL) != 0)
 			return -E_INVAL;
 		
 		pte_t *pte;

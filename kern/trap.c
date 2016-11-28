@@ -203,8 +203,7 @@ static void trap_dispatch(struct Trapframe *tf){
 	// 处理定时器中断；不要忘记在调用调度程序之前使用 lapic_eoi() 确认中断
 	// LAB 4
 
-	if(tf->tf_trapno == IRQ_OFFSET || tf->tf_trapno == IRQ_OFFSET + 1){
-		// cprintf("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT Clock Interrupt\n");
+	if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER){
 		lapic_eoi();
 		sched_yield();
 	}
@@ -212,6 +211,14 @@ static void trap_dispatch(struct Trapframe *tf){
 	// 处理键盘和串行中断
 	// LAB 5
 
+	if(tf->tf_trapno == IRQ_OFFSET + IRQ_KBD){
+		kbd_intr();
+		return;
+	}
+	if(tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL){
+		serial_intr();
+		return;
+	}
 
 	// 意外陷阱：用户进程或内核有错误
 	print_trapframe(tf);

@@ -16,6 +16,8 @@ void libmain(int argc, char **argv){
 	if(argc > 0)
 		binaryname = argv[0];
 
+	// 调用用户主程序
 	umain(argc, argv);
+
 	exit();
 }

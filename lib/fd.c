@@ -65,7 +65,7 @@ int fd_lookup(int fdnum, struct Fd **fd_store){
 	}
 
 	fd = INDEX2FD(fdnum);
-	if(!(uvpt[PDX(fd)] & PTE_P) || !(uvpt[PGNUM(fd)] & PTE_P)){
+	if(!(uvpd[PDX(fd)] & PTE_P) || !(uvpt[PGNUM(fd)] & PTE_P)){
 		if (debug)
 			cprintf("[%08x] closed fd %d\n", thisenv->env_id, fdnum);
 		return -E_INVAL;
@@ -94,7 +94,7 @@ int fd_close(struct Fd *fd, bool must_exist){
 			r = 0;
 	}
 
-	// 确保fd未映射。如果 (*dev->dev_close)(fd) 已经取消映射，可能是无操作
+	// 确保 fd 未映射。如果 (*dev->dev_close)(fd) 已经取消映射，可能是无操作
 	sys_page_unmap(0, fd);
 	return r;
 }
@@ -120,7 +120,7 @@ int dev_lookup(int dev_id, struct Dev **dev){
 	}
 	cprintf("[%08x] unknown device type %d\n", thisenv->env_id, dev_id);
 	*dev = 0;
-	return -E_INVAL
+	return -E_INVAL;
 }
 
 int close(int fdnum){
@@ -158,12 +158,13 @@ int dup(int oldfdnum, int newfdnum){
 	ova = fd2data(oldfd);
 	nva = fd2data(newfd);
 
-	if((uvpt[PDX(ova)] & PTE_P) && (uvpt[PGNUM(ova)] & PTE_P)){
+	if((uvpd[PDX(ova)] & PTE_P) && (uvpt[PGNUM(ova)] & PTE_P)){
 		if((r = sys_page_map(0, ova, 0, nva, uvpt[PGNUM(ova)] & PTE_SYSCALL)) < 0)
 			goto err;
 	}
 	if((r = sys_page_map(0, oldfd, 0, newfd, uvpt[PGNUM(oldfd)] & PTE_SYSCALL)) < 0)
 		goto err;
+	
 	return newfdnum;
 
 err:

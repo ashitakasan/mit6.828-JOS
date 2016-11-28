@@ -10,7 +10,7 @@ struct printbuf {
 	ssize_t result;			// 写入的累计结果
 	int error;				// 发生的第一个错误
 	char buf[256];
-}
+};
 
 static void writebuf(struct printbuf *b){
 	if(b->error > 0){

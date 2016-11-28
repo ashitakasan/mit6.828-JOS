@@ -59,7 +59,7 @@ int spawn(const char *prog, const char **argv){
 	fd = r;
 
 	// 读取 elf 头
-	elf = (struct Elf *e)elf_buf;
+	elf = (struct Elf *)elf_buf;
 	if(readn(fd, elf_buf, sizeof(elf_buf)) != sizeof(elf_buf) || elf->e_magic != ELF_MAGIC){
 		close(fd);
 		cprintf("elf magic %08x want %08x\n", elf->e_magic, ELF_MAGIC);
@@ -72,13 +72,13 @@ int spawn(const char *prog, const char **argv){
 	child = r;
 
 	child_tf = envs[ENVX(child)].env_tf;
-	child_tf.tf_eip = elf->entry;
+	child_tf.tf_eip = elf->e_entry;
 
 	if((r = init_stack(child, argv, &child_tf.tf_esp)) < 0)
 		return r;
 
 	// 设置ELF头中定义的程序段
-	ph = (struct Proghdr *)(elf_buf + elf->phoff);
+	ph = (struct Proghdr *)(elf_buf + elf->e_phoff);
 	for(i = 0; i < elf->e_phnum; i++, ph++){
 		if(ph->p_type != ELF_PROG_LOAD)
 			continue;
@@ -143,7 +143,7 @@ int spawnl(const char *prog, const char *arg0, ...){
   这是一个以 null 结束的指向空值终止字符串的指针数组；
   成功返回 0 并且设置 *init_esp 为子进程应该开始的初始堆栈指针，错误返回小于 0
  */
-static int init_stack(envid_t envid, const char **argv, uintptr_t *init_esp){
+static int init_stack(envid_t child, const char **argv, uintptr_t *init_esp){
 	size_t string_size;
 	int argc, i, r;
 	char *string_store;
@@ -152,7 +152,7 @@ static int init_stack(envid_t envid, const char **argv, uintptr_t *init_esp){
 	// 计算参数的数量 (argc) 和字符串所需的空间总量 (string_size)
 	string_size = 0;
 	for(argc = 0; argv[argc] != 0; argc++)
-		string_size += strlen(argv[argc] + 1);
+		string_size += strlen(argv[argc]) + 1;
 
 	// 确定放置字符串和 argv 数组的位置
 	// 设置指向临时页面 'UTEMP' 的指针; 我们稍后将映射一个页面，
@@ -200,7 +200,7 @@ error:
 	return r;
 }
 
-static int map_segment(envid_t envid, uintptr_t va, size_t memsz, 
+static int map_segment(envid_t child, uintptr_t va, size_t memsz, 
 						int fd, size_t filesz, off_t fileoffset, int perm){
 	int i, r;
 	void *blk;
@@ -209,12 +209,12 @@ static int map_segment(envid_t envid, uintptr_t va, size_t memsz,
 	
 	if((i = PGOFF(va))){
 		va -= i;
-		mmesz += i;
+		memsz += i;
 		filesz += i;
 		fileoffset -= i;
 	}
 
-	for(i = 0; i < memsz, i += PGSIZE){
+	for(i = 0; i < memsz; i += PGSIZE){
 		if(i >= filesz){
 			// 分配一个空白页
 			if((r = sys_page_alloc(child, (void *)(va + i), perm)) < 0)
@@ -244,7 +244,7 @@ static int copy_shared_pages(envid_t envid){
 	int i, j, pn, r;
 	void *va;
 
-	for(i = 0; i <= PDX(USTACKTOP); i++){
+	for(i = 0; i < PDX(UTOP); i++){
 		if(!(uvpd[i] & PTE_P))
 			continue;
 		for(j = 0; j < NPTENTRIES; j++){

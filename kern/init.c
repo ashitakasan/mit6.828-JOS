@@ -67,12 +67,13 @@ void i386_init(void){
 	boot_aps();
 
 	// 启动 fs
-	// ENV_CREATE(fs_fs, ENV_TYPE_FS);
+	ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
 #if defined(TEST)
 	// 不要直接用这里 - 通过分级脚本使用
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
+	int i = 0;
 	for(; i < 1; i++)
 		ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif

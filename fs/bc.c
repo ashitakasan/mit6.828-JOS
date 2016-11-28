@@ -43,9 +43,9 @@ static void bc_pgfault(struct UTrapframe *utf){
 	// 首先将 addr 向下舍入到页面边界，fs/ide.c 有读取磁盘的代码
 	// LAB 5
 
-	uint32_t align_addr = ROUNDDOWN(addr, BLKSIZE);
-	if((r = sys_page_alloc(0, (void *)align_addr, PTE_SYSCALL)) < 0)
-		panic("fs bc_pgfault sys_page_alloc error: %e\n", r);
+	void *align_addr = (void *)ROUNDDOWN(addr, BLKSIZE);
+	if((r = sys_page_alloc(0, align_addr, PTE_SYSCALL)) < 0)
+		panic("FS bc_pgfault sys_page_alloc error: %e\n", r);
 
 	if((r = ide_read(blockno * BLKSECTS, align_addr, BLKSECTS)) < 0)
 		panic("fs bc_pgfault ide_read error: %e", r);
@@ -55,7 +55,7 @@ static void bc_pgfault(struct UTrapframe *utf){
 		panic("in bc_pgfault, sys_page_map: %e", r);
 
 	// 检查我们读取的块是否已分配，为什么我们在读完块之后这样做 ?
-	if(bitmap & block_is_free(blockno))
+	if(bitmap && block_is_free(blockno))
 		panic("reading free block %08x\n", blockno);
 }
 
@@ -75,7 +75,7 @@ void flush_block(void *addr){
 	// LAB 5
 	int r;
 
-	uint32_t align_addr = ROUNDDOWN(addr, BLKSIZE);
+	void *align_addr = (void *)ROUNDDOWN(addr, BLKSIZE);
 	if(!va_is_mapped(addr) || !va_is_dirty(addr))
 		return;
 	

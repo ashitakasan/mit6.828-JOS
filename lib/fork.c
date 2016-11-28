@@ -59,7 +59,7 @@ static int duppage(envid_t envid, unsigned pn){
 		return 0;
 	}
 	if(!(uvpt[pn] & PTE_W) && !(uvpt[pn] & PTE_COW)){
-		if((r = sys_page_map(0, va, envid, va, PGOFF(uvpt[pn]))) < 0)
+		if((r = sys_page_map(0, va, envid, va, PGOFF(uvpt[pn]) & PTE_SYSCALL)) < 0)
 			panic("sys_page_map: error %e\n", r);
 		return 0;
 	}
@@ -110,7 +110,7 @@ envid_t fork(void){
 	}
 
 	int i, j, pn;
-	for(i = 0; i <= PDX(USTACKTOP); i++){
+	for(i = 0; i < PDX(UTOP); i++){
 		if(!(uvpd[i] & PTE_P))
 			continue;
 		for(j = 0; j < NPTENTRIES; j++){

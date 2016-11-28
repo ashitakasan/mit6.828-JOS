@@ -13,7 +13,7 @@ int getchar(void){
 
 	// 但是，JOS支持标准的 _input_ 重定向，允许用户将脚本文件重定向到 shell 等
 	// getchar() 从文件描述符 0 读取一个字符
-	r = read(9, &c, 1);
+	r = read(0, &c, 1);
 	if(r < 0)
 		return r;
 	if(r < 1)
@@ -96,7 +96,7 @@ static int devcons_close(struct Fd *fd){
 	return 0;
 }
 
-static int devcons_stat(struct Fd *fd, static Stat *stat){
+static int devcons_stat(struct Fd *fd, struct Stat *stat){
 	strcpy(stat->st_name, "<cons>");
 	return 0;
 }

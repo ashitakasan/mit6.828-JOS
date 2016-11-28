@@ -3,7 +3,7 @@
 
 void argstart(int *argc, char **argv, struct Argstate *args){
 	args->argc = argc;
-	argc->argv = (const char **)argv;
+	args->argv = (const char **)argv;
 	args->curarg = (*argc > 1 && argv ? "" : 0);
 	args->argvalue = 0;
 }
@@ -36,7 +36,7 @@ int argnext(struct Argstate *args){
 
 endofargs:
 	args->curarg = 0;
-	reutnr -1;
+	return -1;
 }
 
 char *argnextvalue(struct Argstate *args){

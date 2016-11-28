@@ -88,7 +88,7 @@ int openfile_lookup(envid_t envid, uint32_t fileid, struct OpenFile **po){
   在模式 req->req_omode 中打开 req->req_path，
   分别存储 Fd 页面、返回到调用环境的权限到 *pg_store 和 *perm_store 中
  */
-int serve_open(envid_t envid, struct Fsreq_open *req, void **pg_store, int *prem_store){
+int serve_open(envid_t envid, struct Fsreq_open *req, void **pg_store, int *perm_store){
 	char path[MAXPATHLEN];
 	struct File *f;
 	int fileid;
@@ -156,7 +156,7 @@ try_open:
 
 	// 通过设置 *pg_store 与调用者共享 FD 页面，将其权限存储在 *perm_store 中
 	*pg_store = o->o_fd;
-	*perm_store = PTE_P | PTE_U | PTE_W;
+	*perm_store = PTE_P | PTE_U | PTE_W | PTE_SHARE;
 
 	return 0;
 }

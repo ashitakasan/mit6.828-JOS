@@ -82,4 +82,3 @@ wrong(int rfd, int kfd, int off)
 	cprintf("===\n");
 	exit();
 }
-

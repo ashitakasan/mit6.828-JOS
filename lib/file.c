@@ -14,7 +14,7 @@ union Fsipc fsipcbuf __attribute__((aligned(PGSIZE)));
   返回文件服务器的结果
  */
 static int fsipc(unsigned type, void *dstva){
-	static envid_t envid;
+	static envid_t fsenv;
 	if(fsenv == 0)
 		fsenv = ipc_find_env(ENV_TYPE_FS);
 
@@ -23,7 +23,7 @@ static int fsipc(unsigned type, void *dstva){
 		cprintf("[%08x] fsipc %d %08x\n", thisenv->env_id, type, *(uint32_t *)&fsipcbuf);
 
 	ipc_send(fsenv, type, &fsipcbuf, PTE_P | PTE_U | PTE_W);
-	return ipc_send(NULL, dstva, NULL);
+	return ipc_recv(NULL, dstva, NULL);
 }
 
 static int devfile_flush(struct Fd *fd);
@@ -80,8 +80,8 @@ int open(const char *path, int mode){
   除此之外，我们只需要确保我们的更改被刷新到磁盘
  */
 static int devfile_flush(struct Fd *fd){
-	fsipcbuf.flush.req_fileid = fd->fd_file._id;
-	return fdipc(FSREQ_FLUSH, NULL);
+	fsipcbuf.flush.req_fileid = fd->fd_file.id;
+	return fsipc(FSREQ_FLUSH, NULL);
 }
 
 /*
@@ -94,7 +94,7 @@ static ssize_t devfile_read(struct Fd *fd, void *buf, size_t n){
 	
 	int r;
 
-	fsipcbuf.read.req_fileid = fd->fd_file._id;
+	fsipcbuf.read.req_fileid = fd->fd_file.id;
 	fsipcbuf.read.req_n = n;
 	if((r = fsipc(FSREQ_READ, NULL)) < 0)
 		return r;
@@ -117,7 +117,7 @@ static ssize_t devfile_write(struct Fd *fd, const void *buf, size_t n){
 	int r;
 	n = MIN(n, PGSIZE - (sizeof(int) + sizeof(size_t)));
 
-	fsipcbuf.write.req_fileid = fd->fd_file._id;
+	fsipcbuf.write.req_fileid = fd->fd_file.id;
 	fsipcbuf.write.req_n = n;
 
 	memmove(fsipcbuf.write.req_buf, buf, n);
@@ -125,10 +125,10 @@ static ssize_t devfile_write(struct Fd *fd, const void *buf, size_t n){
 	return fsipc(FSREQ_WRITE, NULL);
 }
 
-static int devfile_stat(struct Fd *fd, struct Stat *stat){
+static int devfile_stat(struct Fd *fd, struct Stat *st){
 	int r;
 
-	fsipcbuf.stat.req_fileid = fd->fd_file._id;
+	fsipcbuf.stat.req_fileid = fd->fd_file.id;
 	if((r = fsipc(FSREQ_STAT, NULL)) < 0)
 		return r;
 
@@ -142,7 +142,7 @@ static int devfile_stat(struct Fd *fd, struct Stat *stat){
   截断或扩展一个打开的文件为 'size' 字节
  */
 static int devfile_trunc(struct Fd *fd, off_t newsize){
-	fsipcbuf.set_size.req_fileid = fd->fd_file._id;
+	fsipcbuf.set_size.req_fileid = fd->fd_file.id;
 	fsipcbuf.set_size.req_size = newsize;
 	return fsipc(FSREQ_SET_SIZE, NULL);
 }

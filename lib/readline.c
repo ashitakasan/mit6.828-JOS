@@ -14,7 +14,7 @@ char* readline(const char *prompt){
 		cprintf("%s", prompt);
 #else
 	if(prompt != NULL)
-		fprintf(1, "%s\n", prompt);
+		fprintf(1, "%s", prompt);
 #endif
 
 	i = 0;
